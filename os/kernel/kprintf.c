@@ -43,7 +43,8 @@ static void sink_puts(struct sink *s, const char *str)
  * so we build into a scratch buffer and emit it in reverse.
  */
 static void sink_number(struct sink *s, uint32_t value, uint32_t base,
-                        bool uppercase, int width, bool zero_pad)
+                        bool uppercase, int width, bool zero_pad,
+                        bool left_align)
 {
     const char *digits = uppercase ? "0123456789ABCDEF" : "0123456789abcdef";
     char        tmp[33];
@@ -58,14 +59,23 @@ static void sink_number(struct sink *s, uint32_t value, uint32_t base,
         }
     }
 
-    for (int pad = len; pad < width; pad++)
-        sink_putc(s, zero_pad ? '0' : ' ');
+    if (!left_align) {
+        for (int pad = len; pad < width; pad++)
+            sink_putc(s, zero_pad ? '0' : ' ');
+    }
 
+    int emitted = len;
     while (len > 0)
         sink_putc(s, tmp[--len]);
+
+    if (left_align) {
+        for (int pad = emitted; pad < width; pad++)
+            sink_putc(s, ' ');
+    }
 }
 
-static void sink_signed(struct sink *s, int32_t value, int width, bool zero_pad)
+static void sink_signed(struct sink *s, int32_t value, int width,
+                        bool zero_pad, bool left_align)
 {
     uint32_t magnitude;
 
@@ -80,7 +90,7 @@ static void sink_signed(struct sink *s, int32_t value, int width, bool zero_pad)
         magnitude = (uint32_t)value;
     }
 
-    sink_number(s, magnitude, 10, false, width, zero_pad);
+    sink_number(s, magnitude, 10, false, width, zero_pad, left_align);
 }
 
 static void format(struct sink *s, const char *fmt, va_list args)
@@ -93,11 +103,24 @@ static void format(struct sink *s, const char *fmt, va_list args)
 
         fmt++;  /* consume '%' */
 
-        bool zero_pad = false;
-        if (*fmt == '0') {
-            zero_pad = true;
-            fmt++;
+        bool left_align = false;
+        bool zero_pad    = false;
+
+        for (;;) {
+            if (*fmt == '-') {
+                left_align = true;
+                fmt++;
+            } else if (*fmt == '0') {
+                zero_pad = true;
+                fmt++;
+            } else {
+                break;
+            }
         }
+
+        /* '-' wins over '0': you cannot zero-pad on the right. */
+        if (left_align)
+            zero_pad = false;
 
         int width = 0;
         while (*fmt >= '0' && *fmt <= '9') {
@@ -112,24 +135,24 @@ static void format(struct sink *s, const char *fmt, va_list args)
         switch (*fmt) {
         case 'd':
         case 'i':
-            sink_signed(s, va_arg(args, int32_t), width, zero_pad);
+            sink_signed(s, va_arg(args, int32_t), width, zero_pad, left_align);
             break;
 
         case 'u':
-            sink_number(s, va_arg(args, uint32_t), 10, false, width, zero_pad);
+            sink_number(s, va_arg(args, uint32_t), 10, false, width, zero_pad, left_align);
             break;
 
         case 'x':
-            sink_number(s, va_arg(args, uint32_t), 16, false, width, zero_pad);
+            sink_number(s, va_arg(args, uint32_t), 16, false, width, zero_pad, left_align);
             break;
 
         case 'X':
-            sink_number(s, va_arg(args, uint32_t), 16, true, width, zero_pad);
+            sink_number(s, va_arg(args, uint32_t), 16, true, width, zero_pad, left_align);
             break;
 
         case 'p':
             sink_puts(s, "0x");
-            sink_number(s, (uint32_t)va_arg(args, void *), 16, false, 8, true);
+            sink_number(s, (uint32_t)va_arg(args, void *), 16, false, 8, true, false);
             break;
 
         case 'c':
@@ -140,11 +163,20 @@ static void format(struct sink *s, const char *fmt, va_list args)
             const char *str = va_arg(args, const char *);
             if (!str)
                 str = "(null)";
-            /* Width pads strings on the left, matching printf. */
+
             int len = (int)strlen(str);
-            for (int pad = len; pad < width; pad++)
-                sink_putc(s, ' ');
+
+            if (!left_align) {
+                for (int pad = len; pad < width; pad++)
+                    sink_putc(s, ' ');
+            }
+
             sink_puts(s, str);
+
+            if (left_align) {
+                for (int pad = len; pad < width; pad++)
+                    sink_putc(s, ' ');
+            }
             break;
         }
 
