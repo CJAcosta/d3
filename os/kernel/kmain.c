@@ -21,6 +21,8 @@
 #include "sched.h"
 #include "fs.h"
 #include "shell.h"
+#include "journal.h"
+#include "automate.h"
 #include "string.h"
 
 static uint32_t tests_run;
@@ -177,6 +179,11 @@ void kmain(uint32_t boot_drive)
 
     sched_init();
     fs_init();
+
+    journal_init();
+    automate_init();
+    kprintf("[auto] watching for repeated actions (proposes after %u)\n",
+            AUTOMATION_THRESHOLD);
 
     run_selftests();
 

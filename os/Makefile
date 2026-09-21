@@ -106,6 +106,7 @@ clean:
 # hold) and linked against libc, with kmalloc and friends redirected to
 # malloc by the test harness.
 HOST_TEST_SOURCES := tests/host_tests.c $(SRCDIR)/string.c \
+                     $(SRCDIR)/journal.c $(SRCDIR)/automate.c \
                      $(SRCDIR)/kprintf.c $(SRCDIR)/fs.c
 
 $(BUILD)/host_tests: $(HOST_TEST_SOURCES) | $(BUILD)

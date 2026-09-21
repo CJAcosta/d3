@@ -1,9 +1,39 @@
 # Nebula OS
 
 A small operating system for 32-bit x86, written from scratch in C and
-assembly. It boots from its own 512-byte boot sector on bare metal (or
-QEMU), runs in protected mode with paging, preemptively schedules kernel
-threads, and drops you into an interactive shell.
+assembly, built around one idea: **the computer should be continuously
+programming itself for you.**
+
+Every action you take is observable. The system watches what you repeat,
+works out which parts of it stay the same and which vary, and after the
+third repetition offers the whole thing back as a command you can run.
+Accept it and you have a new program -- without having written software.
+
+It boots from its own 512-byte boot sector on bare metal (or QEMU), runs
+in protected mode with paging, preemptively schedules kernel threads, and
+drops you into a shell that is paying attention.
+
+```
+nebula:/$ mkdir gamma
+nebula:/$ cd gamma
+nebula:/gamma$ cd ..
+
+[auto] you have done this 3 times:
+         mkdir gamma
+         cd gamma
+         cd ..
+       i can make that a command taking 1 argument:
+         mkdir $1
+         cd $1
+         cd ..
+       `accept 2` to keep it as `mkdir-cd`, or `dismiss 2`
+
+nebula:/$ accept 2 project
+learned `project` -- run it as `project <arg>`. saved to /auto/project
+nebula:/$ project delta
+nebula:/$ ls
+     <dir>  delta/
+```
 
 ```
 Nebula OS 0.1.0
@@ -94,6 +124,9 @@ kernel/timer.c    programmable interval timer at 100 Hz
 kernel/rtc.c      CMOS real-time clock
 kernel/input.c    shared console input queue and line editor
 
+kernel/journal.c  the action journal: what the user did
+kernel/automate.c pattern mining, generalisation, proposals
+
 kernel/fs.c       in-memory filesystem
 kernel/shell.c    the interactive shell
 kernel/string.c   freestanding string and memory routines
@@ -150,9 +183,118 @@ final `ret` lands on its entry point, with a return address pointing at
 an exit trampoline. That way a task that simply returns is cleaned up
 rather than running off into whatever was on the stack.
 
+## Software you never wrote
+
+This is the part of the system that is not like other systems, so it is
+worth explaining what it actually does.
+
+### Observing
+
+`kernel/journal.c` is the observation layer, and it is a kernel service
+rather than a shell feature on purpose: anything that acts on the user's
+behalf can record what it did, and the miner sees one unified stream.
+Every action is interned down to a handful of integers, which is what
+makes it affordable to re-mine the entire history after every single
+action.
+
+The shell is currently the only thing feeding it. Commands declare where
+their free-form text begins, so `append log.txt fixed the parser` is
+recorded as *append, to log.txt, this prose* rather than as five loose
+words. Without that, two runs of the same command with different amounts
+of text would look like different kinds of action and never be seen as a
+repetition at all.
+
+Commands about the automation system itself are deliberately not
+observed. Asking the OS what it has learned must not become something it
+learns.
+
+### Generalising
+
+`kernel/automate.c` is the part that does the thinking. After every
+action it folds the trailing window of the journal, at every length up to
+four, into a table of patterns. Two windows are the same pattern when
+their verbs and argument counts line up -- and then the arguments are
+*unified* rather than compared:
+
+```
+mkdir alpha ; cd alpha      everything is literal so far
+mkdir beta  ; cd beta       both positions changed -- and changed together
+mkdir gamma ; cd gamma      -> one parameter, used twice
+
+              mkdir $1 ; cd $1
+```
+
+Positions that stay the same stay literal. Positions that change become
+parameters. Positions that always change *to the same value as each
+other* collapse into a single parameter. That last step is the whole
+game: it is the difference between replaying a recording and writing a
+function with a signature.
+
+### Knowing when to shut up
+
+A sliding window over a stream of actions finds an enormous number of
+"patterns" that are really the same observation wearing different hats.
+Three rules keep the suggestions to things a person would recognise:
+
+- **Periodic windows are ignored.** Typing `ls` four times makes the
+  window `ls ls` look like a repeated pair. Alternating `cd` and `ls`
+  makes `cd ls cd` look like a repeated triple. Any pattern that is a
+  shorter pattern seen through a sliding window is discarded in favour of
+  the shorter one. (The period deliberately does not have to divide the
+  length -- requiring that catches `A A` and misses `A B A`.)
+
+- **Rotations are the same discovery.** A stream of `mkdir` and `cd`
+  contains `cd ; mkdir` exactly as often as `mkdir ; cd`, because the
+  window has no idea where the user thinks the work begins. The tie is
+  broken by recency: the unit that *just finished* is the one the user
+  thinks they were doing.
+
+- **Suggestions settle before they are spoken.** A shorter pattern
+  crosses the threshold one action before the longer pattern containing
+  it, so the engine's first idea is routinely superseded a moment later.
+  A proposal waits one action before being announced, which lets the
+  improvement replace it silently instead of the user being shown a
+  suggestion and then a correction. Nothing already said out loud is ever
+  retracted.
+
+And one rule about taste: a bare repeated command is never proposed. If
+nothing about `ls` is fixed and nothing varies, an automation for it
+would just be `ls` with extra steps.
+
+### Accreting
+
+An accepted automation becomes a command, indistinguishable from a
+built-in at the prompt, and is written to `/auto/<name>` so the software
+you never wrote is at least something you can read:
+
+```
+nebula:/$ cat /auto/project
+# learned from 3 repetitions, 1 parameter
+mkdir $1
+cd $1
+cd ..
+```
+
+When an automation runs, its steps are **not** journalled individually --
+only the invocation is. If the steps were recorded, running an automation
+would re-teach the OS the very pattern it was built from. Recording the
+invocation instead is also what makes the idea compound: the engine does
+not care whether a verb is a built-in or something it taught you last
+week, so a repeated run of learned commands is itself a pattern. Small
+programs accrete into larger ones the same way the first ones appeared.
+
+### Staying in charge
+
+The engine proposes; it never adopts. `auto` shows what it has learned,
+what it is offering, and -- importantly -- the raw watchlist of what it
+has noticed repeating and how often, so the mechanism is inspectable
+rather than magic. `dismiss` rejects a suggestion permanently, `forget`
+deletes an automation, and `history` shows the journal the whole thing is
+built on.
+
 ## The shell
 
-21 commands, all built in:
+26 commands, all built in, plus however many the OS has written for you:
 
 | | |
 |---|---|
@@ -160,6 +302,7 @@ rather than running off into whatever was on the stack.
 | `ls` `cd` `pwd` `cat` `mkdir` `write` `append` `rm` | filesystem |
 | `mem` `memmap` | physical memory, heap and BIOS map |
 | `ps` `spawn` `sleep` `uptime` `date` | tasks and time |
+| `auto` `accept` `dismiss` `forget` `history` | the automation system |
 | `fault` `reboot` | deliberately page-fault; restart |
 
 `spawn` starts a background worker that prints and sleeps, which is the
@@ -180,19 +323,23 @@ System halted.
 ## Testing
 
 ```sh
-make unit-test   # host-side unit tests, no emulator needed  (84 checks)
-make test        # boot in QEMU and drive the shell           (42 checks)
+make unit-test   # host-side unit tests, no emulator needed  (138 checks)
+make test        # boot in QEMU and drive the shell           (69 checks)
 make check       # both
 ```
 
 The two suites cover different things on purpose.
 
 `tests/host_tests.c` compiles the hardware-independent code -- the string
-routines, the printf formatter, the filesystem -- for the host and tests
-it directly, with `kmalloc` redirected to `malloc` and a switch to make
-allocation fail on demand. This is where the awkward edge cases live:
-truncation, overlapping `memmove`, integer overflow, malformed paths,
-out-of-memory paths. It runs in milliseconds.
+routines, the printf formatter, the filesystem, the journal and the
+automation engine -- for the host and tests it directly, with `kmalloc`
+redirected to `malloc` and a switch to make allocation fail on demand.
+This is where the awkward edge cases live: truncation, overlapping
+`memmove`, integer overflow, malformed paths, out-of-memory paths, and
+every inference rule in the miner -- that parameters unify, that periodic
+windows are rejected, that a dismissal sticks. It runs in milliseconds,
+which matters, because the miner is the part most likely to be wrong in a
+way that only shows up on the fourth repetition.
 
 `scripts/boot-test.py` boots the real image under QEMU and drives the
 real shell over the serial console, asserting on what comes back. It
@@ -223,6 +370,26 @@ oversights:
 - **Single processor.** No APIC, no SMP.
 - **The scheduler is round-robin with a fixed slice.** No priorities, no
   blocking primitives beyond sleep.
+
+And about the automation engine specifically, since overclaiming here
+would be the easiest thing in the world:
+
+- **The shell is the only sensor.** The journal is a kernel service and
+  anything could feed it, but today nothing else does. A real version of
+  this idea would observe file operations, window focus, and the things
+  people actually repeat that are not typed commands.
+- **Only contiguous runs are mined.** If you do A, then something
+  unrelated, then B, the pair A-B is not noticed. Real repetition is
+  often interrupted, and handling that needs gap-tolerant matching.
+- **Sequences are capped at four actions** and automations are
+  straight-line: no conditionals, no loops, no error handling. They do
+  the same steps in the same order every time.
+- **Parameters are positional and untyped.** The engine knows that a
+  position varies, not what kind of thing belongs there, so it cannot
+  warn you that you passed a filename where it expected a number.
+- **Nothing persists.** The journal, the patterns and the automations are
+  all in RAM, so a reboot forgets everything the machine learned about
+  you. That is a property of having no disk driver, not a design choice.
 
 ## License
 

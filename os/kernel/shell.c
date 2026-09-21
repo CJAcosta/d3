@@ -18,10 +18,15 @@
 #include "sched.h"
 #include "timer.h"
 #include "rtc.h"
+#include "journal.h"
+#include "automate.h"
 #include "io.h"
 
 #define MAX_LINE 256
 #define MAX_ARGS 16
+
+/* An automation may call another; this bounds the recursion. */
+#define AUTOMATION_MAX_DEPTH 4
 
 static struct fs_node *cwd;
 
@@ -29,10 +34,31 @@ struct command {
     const char *name;
     const char *usage;
     const char *summary;
+
+    /*
+     * Where free-form text begins in argv, or 0 for a command whose
+     * arguments are all positional.
+     *
+     * The automation engine compares actions by shape, so `append log a`
+     * and `append log a b c` would otherwise look like different kinds
+     * of action and never be seen as a repeat. Declaring that `append`
+     * takes a filename and then prose lets the engine record the prose
+     * as one argument, which is what it means to the user.
+     */
+    uint8_t tail_index;
+
+    /*
+     * Whether doing this counts as work worth watching. Commands that
+     * are about the automation system itself are excluded, so asking
+     * what the OS has learned does not become something it learns.
+     */
+    bool observable;
+
     void (*run)(int argc, char **argv);
 };
 
 static const struct command commands[];
+static void dispatch(int argc, char **argv, int depth);
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
@@ -452,30 +478,416 @@ static void cmd_fault(int argc, char **argv)
     kprintf("unexpectedly survived\n");
 }
 
+
+/* ------------------------------------------------------------------ */
+/* The automation system                                               */
+/* ------------------------------------------------------------------ */
+
+/* Keep an accepted automation visible in the filesystem, so the software
+ * the user never wrote is at least something they can read. */
+static void publish_automation(const struct automation *automation)
+{
+    char path[FS_PATH_MAX];
+
+    if (!fs_lookup(fs_root(), "/auto"))
+        fs_create(fs_root(), "/auto", FS_DIR);
+
+    ksnprintf(path, sizeof(path), "/auto/%s", automation->name);
+
+    struct fs_node *file = fs_lookup(fs_root(), path);
+    if (!file)
+        file = fs_create(fs_root(), path, FS_FILE);
+    if (!file)
+        return;
+
+    char body[AUTOMATION_LINE_MAX * PATTERN_MAX_LEN + 128];
+    size_t pos = 0;
+
+    pos += (size_t)ksnprintf(body + pos, sizeof(body) - pos,
+                             "# learned from %u repetitions, %u parameter%s\n",
+                             automation->learned_from, automation->param_count,
+                             automation->param_count == 1 ? "" : "s");
+
+    for (uint8_t i = 0; i < automation->line_count && pos < sizeof(body); i++)
+        pos += (size_t)ksnprintf(body + pos, sizeof(body) - pos, "%s\n",
+                                 automation->lines[i]);
+
+    fs_write(file, body, pos);
+}
+
+static void unpublish_automation(const char *name)
+{
+    char path[FS_PATH_MAX];
+
+    ksnprintf(path, sizeof(path), "/auto/%s", name);
+
+    struct fs_node *file = fs_lookup(fs_root(), path);
+    if (file)
+        fs_unlink(file);
+}
+
+/* Tell the user about anything the engine has newly worked out. */
+static void announce_proposals(void)
+{
+    const struct proposal *proposal;
+
+    while ((proposal = automate_next_unannounced()) != NULL) {
+        vga_set_color(VGA_YELLOW, VGA_BLACK);
+        kprintf("\n[auto] you have done this %u times:\n",
+                proposal->occurrences);
+        vga_set_color(VGA_LIGHT_GREY, VGA_BLACK);
+
+        for (uint8_t i = 0; i < proposal->line_count; i++)
+            kprintf("         %s\n", proposal->example[i]);
+
+        vga_set_color(VGA_YELLOW, VGA_BLACK);
+        kprintf("       i can make that a command");
+        vga_set_color(VGA_LIGHT_GREY, VGA_BLACK);
+
+        if (proposal->param_count)
+            kprintf(" taking %u argument%s", proposal->param_count,
+                    proposal->param_count == 1 ? "" : "s");
+        kprintf(":\n");
+
+        for (uint8_t i = 0; i < proposal->line_count; i++)
+            kprintf("         %s\n", proposal->lines[i]);
+
+        kprintf("       `accept %u` to keep it as `%s`, or `dismiss %u`\n\n",
+                proposal->id, proposal->name, proposal->id);
+    }
+}
+
+static void cmd_auto(int argc, char **argv)
+{
+    uint32_t automations = automate_count();
+    uint32_t pending     = automate_proposal_count();
+
+    kprintf("automations (%u):\n", automations);
+
+    for (uint32_t i = 0; i < automations; i++) {
+        const struct automation *automation = automate_at(i);
+
+        vga_set_color(VGA_LIGHT_GREEN, VGA_BLACK);
+        kprintf("  %-16s", automation->name);
+        vga_set_color(VGA_LIGHT_GREY, VGA_BLACK);
+        kprintf(" %u arg%s, run %u time%s, learned from %u repetitions\n",
+                automation->param_count,
+                automation->param_count == 1 ? " " : "s",
+                automation->run_count,
+                automation->run_count == 1 ? "" : "s",
+                automation->learned_from);
+
+        for (uint8_t line = 0; line < automation->line_count; line++)
+            kprintf("      %s\n", automation->lines[line]);
+    }
+
+    if (!automations)
+        kprintf("  (none yet -- repeat yourself and the OS will offer some)\n");
+
+    kprintf("\nproposals (%u):\n", pending);
+
+    for (uint32_t i = 0; i < pending; i++) {
+        const struct proposal *proposal = automate_proposal_at(i);
+
+        vga_set_color(VGA_YELLOW, VGA_BLACK);
+        kprintf("  [%u] %-14s", proposal->id, proposal->name);
+        vga_set_color(VGA_LIGHT_GREY, VGA_BLACK);
+        kprintf(" seen %u times, %u argument%s\n",
+                proposal->occurrences, proposal->param_count,
+                proposal->param_count == 1 ? "" : "s");
+
+        for (uint8_t line = 0; line < proposal->line_count; line++)
+            kprintf("      %s\n", proposal->lines[line]);
+    }
+
+    if (!pending)
+        kprintf("  (none)\n");
+
+    /* Showing the raw counts keeps the mechanism inspectable: the user
+     * can see what the OS is building towards before it says anything. */
+    uint32_t watching = automate_watch_count();
+
+    kprintf("\nwatching (%u repeated sequences):\n", watching);
+
+    for (uint32_t i = 0; i < watching && i < 8; i++) {
+        char     text[AUTOMATION_LINE_MAX * 2];
+        uint16_t occurrences = 0;
+        bool     ready = false;
+
+        if (!automate_watch_at(i, text, sizeof(text), &occurrences, &ready))
+            break;
+
+        kprintf("  %2ux  %s%s\n", occurrences, text, ready ? "  (ready)" : "");
+    }
+
+    if (!watching)
+        kprintf("  (nothing repeated yet)\n");
+}
+
+static void cmd_accept(int argc, char **argv)
+{
+    if (argc < 2) {
+        kprintf("usage: accept <proposal id> [name]\n");
+        return;
+    }
+
+    int id = atoi_safe(argv[1]);
+    if (id <= 0) {
+        kprintf("accept: %s is not a proposal id\n", argv[1]);
+        return;
+    }
+
+    const struct automation *automation =
+        automate_accept((uint16_t)id, (argc > 2) ? argv[2] : NULL);
+
+    if (!automation) {
+        kprintf("accept: no proposal %d, or that name is taken\n", id);
+        return;
+    }
+
+    publish_automation(automation);
+
+    vga_set_color(VGA_LIGHT_GREEN, VGA_BLACK);
+    kprintf("learned `%s`", automation->name);
+    vga_set_color(VGA_LIGHT_GREY, VGA_BLACK);
+
+    if (automation->param_count)
+        kprintf(" -- run it as `%s%s`", automation->name,
+                automation->param_count == 1 ? " <arg>" : " <arg> <arg>");
+
+    kprintf(". saved to /auto/%s\n", automation->name);
+}
+
+static void cmd_dismiss(int argc, char **argv)
+{
+    if (argc < 2) {
+        kprintf("usage: dismiss <proposal id>\n");
+        return;
+    }
+
+    int id = atoi_safe(argv[1]);
+
+    if (id <= 0 || !automate_dismiss((uint16_t)id))
+        kprintf("dismiss: no proposal %s\n", argv[1]);
+    else
+        kprintf("dismissed; that pattern will not be suggested again\n");
+}
+
+static void cmd_forget(int argc, char **argv)
+{
+    if (argc < 2) {
+        kprintf("usage: forget <automation>\n");
+        return;
+    }
+
+    if (automate_forget(argv[1])) {
+        unpublish_automation(argv[1]);
+        kprintf("forgot `%s`\n", argv[1]);
+    } else {
+        kprintf("forget: no automation called %s\n", argv[1]);
+    }
+}
+
+static void cmd_history(int argc, char **argv)
+{
+    int limit = (argc > 1) ? atoi_safe(argv[1]) : 20;
+
+    if (limit <= 0)
+        limit = 20;
+
+    uint32_t held = journal_count();
+    if ((uint32_t)limit > held)
+        limit = (int)held;
+
+    kprintf("%u actions recorded, %u kept\n", journal_total(), held);
+
+    /* Oldest of the requested window first, so it reads as a sequence. */
+    for (int i = limit - 1; i >= 0; i--) {
+        const struct event *event = journal_recent((uint32_t)i);
+        char                text[AUTOMATION_LINE_MAX];
+
+        if (!event)
+            continue;
+
+        journal_format(event, text, sizeof(text));
+        kprintf("  %5u  %s\n", event->serial + 1, text);
+    }
+}
+
 static const struct command commands[] = {
-    { "help",    "help",              "list these commands",                 cmd_help },
-    { "clear",   "clear",             "clear the screen",                    cmd_clear },
-    { "echo",    "echo <text>",       "print its arguments",                 cmd_echo },
-    { "ls",      "ls [path]",         "list a directory",                    cmd_ls },
-    { "cd",      "cd [path]",         "change directory",                    cmd_cd },
-    { "pwd",     "pwd",               "print the working directory",         cmd_pwd },
-    { "cat",     "cat <file>",        "print a file",                        cmd_cat },
-    { "mkdir",   "mkdir <name>",      "create a directory",                  cmd_mkdir },
-    { "write",   "write <f> <text>",  "write text to a file",                cmd_write },
-    { "append",  "append <f> <text>", "append text to a file",               cmd_append },
-    { "rm",      "rm <name>",         "remove a file or empty directory",    cmd_rm },
-    { "mem",     "mem",               "show memory and heap usage",          cmd_mem },
-    { "memmap",  "memmap",            "show the BIOS physical memory map",   cmd_memmap },
-    { "ps",      "ps",                "list tasks",                          cmd_ps },
-    { "spawn",   "spawn [rounds]",    "start a background worker task",      cmd_spawn },
-    { "sleep",   "sleep <ms>",        "block the shell for a while",         cmd_sleep },
-    { "uptime",  "uptime",            "time since boot",                     cmd_uptime },
-    { "date",    "date",              "read the CMOS real-time clock",       cmd_date },
-    { "uname",   "uname",             "kernel version",                      cmd_uname },
-    { "fault",   "fault",             "trigger a page fault on purpose",     cmd_fault },
-    { "reboot",  "reboot",            "restart the machine",                 cmd_reboot },
-    { NULL, NULL, NULL, NULL }
+    /*                                                            tail  observable */
+    { "help",    "help",              "list these commands",         0, false, cmd_help },
+    { "clear",   "clear",             "clear the screen",            0, false, cmd_clear },
+    { "echo",    "echo <text>",       "print its arguments",         1, true,  cmd_echo },
+    { "ls",      "ls [path]",         "list a directory",            0, true,  cmd_ls },
+    { "cd",      "cd [path]",         "change directory",            0, true,  cmd_cd },
+    { "pwd",     "pwd",               "print the working directory", 0, true,  cmd_pwd },
+    { "cat",     "cat <file>",        "print a file",                0, true,  cmd_cat },
+    { "mkdir",   "mkdir <name>",      "create a directory",          0, true,  cmd_mkdir },
+    { "write",   "write <f> <text>",  "write text to a file",        2, true,  cmd_write },
+    { "append",  "append <f> <text>", "append text to a file",       2, true,  cmd_append },
+    { "rm",      "rm <name>",         "remove a file or directory",  0, true,  cmd_rm },
+    { "mem",     "mem",               "show memory and heap usage",  0, true,  cmd_mem },
+    { "memmap",  "memmap",            "show the BIOS memory map",    0, true,  cmd_memmap },
+    { "ps",      "ps",                "list tasks",                  0, true,  cmd_ps },
+    { "spawn",   "spawn [rounds]",    "start a background worker",   0, true,  cmd_spawn },
+    { "sleep",   "sleep <ms>",        "block the shell for a while", 0, true,  cmd_sleep },
+    { "uptime",  "uptime",            "time since boot",             0, true,  cmd_uptime },
+    { "date",    "date",              "read the real-time clock",    0, true,  cmd_date },
+    { "uname",   "uname",             "kernel version",              0, true,  cmd_uname },
+
+    /* The automation system. None of these are observable: asking what
+     * the OS has learned must not itself become something it learns. */
+    { "auto",    "auto",              "automations, proposals, watchlist", 0, false, cmd_auto },
+    { "accept",  "accept <id> [name]","turn a proposal into a command",    0, false, cmd_accept },
+    { "dismiss", "dismiss <id>",      "reject a proposal for good",        0, false, cmd_dismiss },
+    { "forget",  "forget <name>",     "delete an automation",              0, false, cmd_forget },
+    { "history", "history [n]",       "show the action journal",           0, false, cmd_history },
+
+    { "fault",   "fault",             "trigger a page fault on purpose", 0, false, cmd_fault },
+    { "reboot",  "reboot",            "restart the machine",             0, false, cmd_reboot },
+    { NULL, NULL, NULL, 0, false, NULL }
 };
+
+
+/* ------------------------------------------------------------------ */
+/* Dispatch                                                            */
+/* ------------------------------------------------------------------ */
+
+static const struct command *find_command(const char *name)
+{
+    for (int i = 0; commands[i].name; i++) {
+        if (strcmp(name, commands[i].name) == 0)
+            return &commands[i];
+    }
+
+    return NULL;
+}
+
+/*
+ * Record what the user just did.
+ *
+ * `tail_index` is where the command's free-form text starts. Everything
+ * from there is joined into a single argument, because that is what it
+ * is: one piece of prose, not N words. Without this, two runs of the
+ * same command with different amounts of text would look like different
+ * shapes of action and never be recognised as a repetition.
+ */
+static void record_action(uint8_t tail_index, int argc, char **argv)
+{
+    char  joined[INTERN_STRING_MAX];
+    char *record_argv[EVENT_MAX_ARGS + 1];
+    int   record_argc = 0;
+
+    const struct event *event;
+
+    if (tail_index > 0 && argc > tail_index + 1) {
+        for (int i = 0; i < tail_index && record_argc < EVENT_MAX_ARGS; i++)
+            record_argv[record_argc++] = argv[i];
+
+        size_t pos = 0;
+        for (int i = tail_index; i < argc; i++) {
+            size_t len = strlen(argv[i]);
+
+            if (i > tail_index && pos + 1 < sizeof(joined))
+                joined[pos++] = ' ';
+
+            for (size_t j = 0; j < len && pos + 1 < sizeof(joined); j++)
+                joined[pos++] = argv[i][j];
+        }
+        joined[pos] = '\0';
+
+        record_argv[record_argc++] = joined;
+
+        event = journal_record(record_argv[0], record_argc, record_argv);
+    } else {
+        /*
+         * Hand the whole argument list over untouched. The journal joins
+         * anything past its own limit into the final slot, which is
+         * lossless; copying into a bounded array here would instead drop
+         * the tail and quietly record a different action than happened.
+         */
+        event = journal_record(argv[0], argc, argv);
+    }
+
+    if (event)
+        automate_observe(event);
+}
+
+static void run_automation(const struct automation *automation,
+                           int argc, char **argv, int depth)
+{
+    if (depth >= AUTOMATION_MAX_DEPTH) {
+        kprintf("%s: automations nested too deeply\n", argv[0]);
+        return;
+    }
+
+    if (argc <= automation->param_count) {
+        kprintf("%s: needs %u argument%s\n", automation->name,
+                automation->param_count,
+                automation->param_count == 1 ? "" : "s");
+        return;
+    }
+
+    automate_note_run(automation);
+
+    for (uint8_t line = 0; line < automation->line_count; line++) {
+        char  expanded[AUTOMATION_LINE_MAX];
+        char *sub_argv[MAX_ARGS];
+
+        if (!automate_expand(automation, line, argc, argv,
+                             expanded, sizeof(expanded))) {
+            kprintf("%s: could not expand step %u\n", automation->name, line + 1);
+            return;
+        }
+
+        int sub_argc = tokenize(expanded, sub_argv, MAX_ARGS);
+        if (sub_argc == 0)
+            continue;
+
+        dispatch(sub_argc, sub_argv, depth + 1);
+    }
+}
+
+/*
+ * Run one command line.
+ *
+ * Only the outermost invocation is journalled. The steps an automation
+ * performs are not recorded individually -- if they were, running an
+ * automation would re-teach the OS the very pattern it was built from.
+ * Recording the invocation instead is also what lets automations compose:
+ * a repeated sequence of automation calls is itself a pattern, so the
+ * software the user never wrote can be built out of more of the same.
+ */
+static void dispatch(int argc, char **argv, int depth)
+{
+    if (argc == 0)
+        return;
+
+    const struct command *cmd = find_command(argv[0]);
+
+    if (cmd) {
+        cmd->run(argc, argv);
+
+        if (depth == 0 && cmd->observable)
+            record_action(cmd->tail_index, argc, argv);
+
+        return;
+    }
+
+    const struct automation *automation = automate_find(argv[0]);
+
+    if (automation) {
+        run_automation(automation, argc, argv, depth);
+
+        if (depth == 0)
+            record_action(0, argc, argv);
+
+        return;
+    }
+
+    kprintf("%s: command not found. Try `help`.\n", argv[0]);
+}
 
 /* ------------------------------------------------------------------ */
 /* Main loop                                                           */
@@ -504,7 +916,9 @@ void shell_task(void *arg)
 
     cwd = fs_root();
 
-    kprintf("\nWelcome to Nebula OS. Type `help` to get started.\n\n");
+    kprintf("\nWelcome to Nebula OS. Type `help` to get started.\n");
+    kprintf("This system watches what you repeat and offers to automate it;\n");
+    kprintf("`auto` shows what it has noticed so far.\n\n");
 
     for (;;) {
         prompt();
@@ -517,17 +931,11 @@ void shell_task(void *arg)
         if (argc == 0)
             continue;
 
-        const struct command *cmd = NULL;
-        for (int i = 0; commands[i].name; i++) {
-            if (strcmp(argv[0], commands[i].name) == 0) {
-                cmd = &commands[i];
-                break;
-            }
-        }
+        dispatch(argc, argv, 0);
 
-        if (cmd)
-            cmd->run(argc, argv);
-        else
-            kprintf("%s: command not found. Try `help`.\n", argv[0]);
+        /* Say anything the engine worked out, then let this action's
+         * discoveries settle so they can be announced next time. */
+        announce_proposals();
+        automate_settle();
     }
 }

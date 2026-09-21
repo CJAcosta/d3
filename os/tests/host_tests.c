@@ -22,6 +22,8 @@
 #include "vga.h"
 #include "serial.h"
 #include "timer.h"
+#include "journal.h"
+#include "automate.h"
 
 /* Declared by hand rather than including the host's headers, which would
  * collide with the kernel's freestanding types. */
@@ -318,6 +320,327 @@ static void test_fs(void)
     allocations_fail = 0;
 }
 
+/* ------------------------------------------------------------------ */
+/* The automation engine                                               */
+/* ------------------------------------------------------------------ */
+
+/*
+ * Perform one action the way the shell would: record it, then mine.
+ *
+ * tail_index mirrors the shell's per-command declaration of where
+ * free-form text begins; everything from there is joined into a single
+ * argument. 0 means the command takes only positional arguments.
+ */
+static void act_tail(const char *line, int tail_index)
+{
+    static char  scratch[256];
+    static char  joined[INTERN_STRING_MAX];
+    char        *argv[16];
+    char        *record[EVENT_MAX_ARGS + 1];
+    int          argc = 0;
+    int          count = 0;
+
+    strlcpy(scratch, line, sizeof(scratch));
+
+    char *p = scratch;
+    while (*p && argc < 16) {
+        while (*p == ' ')
+            *p++ = '\0';
+        if (!*p)
+            break;
+        argv[argc++] = p;
+        while (*p && *p != ' ')
+            p++;
+    }
+
+    if (argc == 0)
+        return;
+
+    if (tail_index > 0 && argc > tail_index + 1) {
+        for (int i = 0; i < tail_index && count < EVENT_MAX_ARGS; i++)
+            record[count++] = argv[i];
+
+        size_t pos = 0;
+        for (int i = tail_index; i < argc; i++) {
+            size_t len = strlen(argv[i]);
+            if (i > tail_index && pos + 1 < sizeof(joined))
+                joined[pos++] = ' ';
+            for (size_t j = 0; j < len && pos + 1 < sizeof(joined); j++)
+                joined[pos++] = argv[i][j];
+        }
+        joined[pos] = '\0';
+        record[count++] = joined;
+    } else {
+        /* No declared tail: hand the full list to the journal, which
+         * joins any overflow losslessly. */
+        record[0] = NULL;
+    }
+
+    const struct event *event = record[0]
+        ? journal_record(record[0], count, record)
+        : journal_record(argv[0], argc, argv);
+
+    if (event)
+        automate_observe(event);
+}
+
+static void act(const char *line)
+{
+    act_tail(line, 0);
+}
+
+static void reset_engine(void)
+{
+    journal_init();
+    automate_init();
+}
+
+static const struct proposal *only_proposal(void)
+{
+    return automate_proposal_count() == 1 ? automate_proposal_at(0) : NULL;
+}
+
+static void test_automation(void)
+{
+    printf("\nautomation engine:\n");
+
+    /* --- a two-step sequence generalises into one parameter --- */
+    reset_engine();
+    act("mkdir alpha");
+    act("cd alpha");
+    check("nothing is proposed after one occurrence",
+          automate_proposal_count() == 0);
+
+    act("mkdir beta");
+    act("cd beta");
+    check("nothing is proposed after two occurrences",
+          automate_proposal_count() == 0);
+
+    act("mkdir gamma");
+    act("cd gamma");
+
+    const struct proposal *p = only_proposal();
+    check("a proposal appears on the third repetition", p != NULL);
+
+    if (p) {
+        check("the proposal has both steps", p->line_count == 2);
+        check_str("the first step is generalised", p->lines[0], "mkdir $1");
+        check_str("the second step reuses the same parameter",
+                  p->lines[1], "cd $1");
+        check("positions that change together share one parameter",
+              p->param_count == 1);
+        check("the proposal counts the occurrences", p->occurrences == 3);
+        check_str("the suggested name is derived from the verbs",
+                  p->name, "mkdir-cd");
+        check_str("the proposal shows a real example", p->example[0],
+                  "mkdir gamma");
+    }
+
+    /* --- accepting turns it into a callable command --- */
+    const struct automation *a = automate_accept(p ? p->id : 0, NULL);
+    check("accepting creates an automation", a != NULL);
+    check("the proposal is consumed", automate_proposal_count() == 0);
+    check("the automation is findable by name",
+          automate_find("mkdir-cd") == a);
+
+    if (a) {
+        char  line[AUTOMATION_LINE_MAX];
+        char *argv[] = { (char *)"mkdir-cd", (char *)"delta" };
+
+        check("expanding the first line substitutes the argument",
+              automate_expand(a, 0, 2, argv, line, sizeof(line)));
+        check_str("the substitution is correct", line, "mkdir delta");
+
+        automate_expand(a, 1, 2, argv, line, sizeof(line));
+        check_str("the shared parameter expands the same way",
+                  line, "cd delta");
+
+        char *no_args[] = { (char *)"mkdir-cd" };
+        check("expansion fails when an argument is missing",
+              !automate_expand(a, 0, 1, no_args, line, sizeof(line)));
+    }
+
+    check("an adopted pattern is not proposed again",
+          automate_proposal_count() == 0);
+
+    act("mkdir epsilon");
+    act("cd epsilon");
+    check("repeating an adopted pattern raises no new proposal",
+          automate_proposal_count() == 0);
+
+    /* --- a repeated command keeps what stays fixed --- */
+    reset_engine();
+    act_tail("append log.txt started the build", 2);
+    act_tail("append log.txt tests are green", 2);
+    act_tail("append log.txt shipped it", 2);
+
+    p = only_proposal();
+    check("a single repeated command can be proposed", p != NULL);
+
+    if (p) {
+        check("it is a one-line automation", p->line_count == 1);
+        check_str("the unchanging argument stays literal",
+                  p->lines[0], "append log.txt $1");
+        check("it takes one parameter", p->param_count == 1);
+        check_str("the name comes from what it operates on", p->name, "append-log");
+        check_str("free text of differing lengths still unifies",
+                  p->example[0], "append log.txt shipped it");
+    }
+
+    /* --- independently varying positions get separate parameters --- */
+    reset_engine();
+    act("write a.txt one");
+    act("rm a.txt");
+    act("write b.txt two");
+    act("rm b.txt");
+    act("write c.txt three");
+    act("rm c.txt");
+
+    p = only_proposal();
+    check("a mixed sequence is proposed", p != NULL);
+
+    if (p) {
+        check_str("the filename and the text are separate parameters",
+                  p->lines[0], "write $1 $2");
+        check_str("the filename is reused in the second step",
+                  p->lines[1], "rm $1");
+        check("two parameters are needed", p->param_count == 2);
+    }
+
+    /* --- a bare repeated command is not worth automating --- */
+    reset_engine();
+    act("ls");
+    act("ls");
+    act("ls");
+    act("ls");
+    check("repeating a bare command proposes nothing",
+          automate_proposal_count() == 0);
+
+    /* --- periodic windows do not masquerade as longer patterns --- */
+    reset_engine();
+    act("pwd");
+    act("pwd");
+    act("pwd");
+    act("pwd");
+    act("pwd");
+    act("pwd");
+    check("a command repeated many times proposes nothing",
+          automate_proposal_count() == 0);
+
+    /* --- alternating pair: the pair is found, not the quadruple --- */
+    reset_engine();
+    for (int i = 0; i < 3; i++) {
+        act("cd /tmp");
+        act("ls");
+    }
+
+    p = only_proposal();
+    check("an alternating pair is discovered", p != NULL);
+    if (p) {
+        check("the period is two steps, not four", p->line_count == 2);
+        check_str("the fixed path is kept", p->lines[0], "cd /tmp");
+    }
+
+    /* --- dismissal is permanent --- */
+    reset_engine();
+    act("cd /home");
+    act("cat readme.txt");
+    act("cd /home");
+    act("cat readme.txt");
+    act("cd /home");
+    act("cat readme.txt");
+
+    p = only_proposal();
+    check("a proposal is raised before dismissal", p != NULL);
+    check("dismissing it succeeds", p && automate_dismiss(p->id));
+    check("the proposal is gone", automate_proposal_count() == 0);
+
+    act("cd /home");
+    act("cat readme.txt");
+    act("cd /home");
+    act("cat readme.txt");
+    check("a dismissed pattern is not proposed again",
+          automate_proposal_count() == 0);
+
+    /* --- announcement happens once --- */
+    reset_engine();
+    act("mkdir x");
+    act("cd x");
+    act("mkdir y");
+    act("cd y");
+    act("mkdir z");
+    act("cd z");
+    check("a fresh proposal is not announced immediately",
+          automate_next_unannounced() == NULL);
+    automate_settle();
+    check("it is announced once it has settled",
+          automate_next_unannounced() != NULL);
+    check("it is only announced once",
+          automate_next_unannounced() == NULL);
+
+    /* --- forgetting an automation --- */
+    reset_engine();
+    act("append notes.txt a");
+    act("append notes.txt b");
+    act("append notes.txt c");
+    p = only_proposal();
+    if (p)
+        automate_accept(p->id, "note");
+    check("an automation can be given a chosen name",
+          automate_find("note") != NULL);
+    check("automations are counted", automate_count() == 1);
+    check("forgetting removes it", automate_forget("note"));
+    check("it is gone afterwards", automate_find("note") == NULL);
+    check("forgetting something unknown fails", !automate_forget("nope"));
+
+    /*
+     * --- automations compose ---
+     *
+     * The engine does not care whether a verb is a built-in or something
+     * it taught the user's machine earlier: a repeated run of learned
+     * commands is just another pattern. That is the mechanism by which
+     * small programs accrete into larger ones without anyone writing
+     * software.
+     */
+    reset_engine();
+    for (int i = 0; i < 3; i++) {
+        char build[64], ship[64];
+
+        ksnprintf(build, sizeof(build), "project r%d", i);
+        ksnprintf(ship, sizeof(ship), "note r%d", i);
+
+        act(build);
+        act(ship);
+    }
+
+    p = only_proposal();
+    check("a sequence of learned commands is itself discovered", p != NULL);
+
+    if (p) {
+        check("the composed automation has both steps", p->line_count == 2);
+        check_str("the first learned command is generalised",
+                  p->lines[0], "project $1");
+        check_str("the second reuses the same parameter",
+                  p->lines[1], "note $1");
+        check("the composition takes one argument", p->param_count == 1);
+    }
+
+    /* --- the journal is inspectable --- */
+    reset_engine();
+    act("echo hello world and some more text here");
+    const struct event *last = journal_recent(0);
+    check("the action was journalled", last != NULL);
+
+    if (last) {
+        char rendered[128];
+        journal_format(last, rendered, sizeof(rendered));
+        check_str("arguments beyond the limit are joined losslessly",
+                  rendered, "echo hello world and some more text here");
+    }
+
+    check("the journal counts what it holds", journal_count() == 1);
+}
+
 int main(void)
 {
     printf("Nebula OS unit tests\n");
@@ -325,6 +648,7 @@ int main(void)
     test_string();
     test_printf();
     test_fs();
+    test_automation();
 
     printf("\n%d checks, %d failed\n", checks_run, checks_failed);
 

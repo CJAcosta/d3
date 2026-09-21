@@ -70,6 +70,33 @@ class Machine:
             pass
 
 
+def parse_proposals(listing):
+    """Pull {id: [body lines]} out of an `auto` listing."""
+    found = {}
+    current = None
+
+    for line in listing.splitlines():
+        stripped = line.strip()
+
+        if stripped.startswith("[") and "]" in stripped:
+            current = stripped[1:stripped.index("]")]
+            found[current] = []
+        elif current and line.startswith("      "):
+            found[current].append(stripped)
+        elif not stripped:
+            current = None
+
+    return found
+
+
+def find_proposal(machine, needle):
+    """The id of the pending proposal whose body contains `needle`."""
+    for pid, body in parse_proposals(machine.command("auto")).items():
+        if any(needle in line for line in body):
+            return pid
+    return None
+
+
 class Results:
     def __init__(self):
         self.passed = 0
@@ -204,6 +231,96 @@ def main():
         out = m.command("sleep 1200", timeout=15)
         r.contains("a spawned task runs concurrently", out, "[worker")
         r.contains("the spawned task finishes", out, "finished")
+
+        # --- the automation system -------------------------------------
+        #
+        # Repeat a sequence and the OS should work out the shape of it,
+        # offer it back as a command, and then actually run it.
+        #
+        # By this point the machine has a history: everything above was
+        # real activity and the engine has been watching all of it. The
+        # checks below therefore look for *this* discovery among whatever
+        # else the system has legitimately noticed, rather than assuming
+        # it is the only thing on the OS's mind.
+        print("\nself-programming:")
+
+        for name in ("alpha", "beta"):
+            m.command("mkdir %s" % name)
+            m.command("cd %s" % name)
+            m.command("cd ..")
+
+        r.check("the sequence is not yet proposed after two repetitions",
+                find_proposal(m, "mkdir $1") is None)
+
+        m.command("mkdir gamma")
+        m.command("cd gamma")
+        out = m.command("cd ..")
+        r.missing("a fresh discovery is not announced in the same breath",
+                  out, "mkdir $1")
+
+        out = m.command("uname")
+        r.contains("the repetition is noticed", out, "you have done this 3 times")
+        r.contains("the proposal is generalised", out, "mkdir $1")
+        r.contains("the parameter is reused across steps", out, "cd $1")
+        r.contains("it says how many arguments it needs", out, "taking 1 argument")
+        r.contains("a concrete example is shown", out, "mkdir gamma")
+
+        listing = m.command("auto")
+        r.contains("the watchlist is visible", listing, "watching")
+        r.contains("the counts are shown", listing, "3x")
+
+        proposal_id = find_proposal(m, "mkdir $1")
+        r.check("the proposal is listed with an id",
+                proposal_id is not None, listing)
+
+        out = m.command("accept %s project" % proposal_id)
+        r.contains("accepting names the new command", out, "learned `project`")
+        r.contains("it is saved where it can be read", out, "/auto/project")
+
+        r.check("it is no longer pending once accepted",
+                find_proposal(m, "mkdir $1") is None)
+        r.contains("it now appears as an automation", m.command("auto"), "project")
+
+        out = m.command("cat /auto/project")
+        r.contains("the automation is readable as a file", out, "mkdir $1")
+        r.contains("it records where it came from", out,
+                   "learned from 3 repetitions")
+
+        # Running it must actually perform every step.
+        m.command("project delta")
+        out = m.command("ls")
+        r.contains("running the automation does the work", out, "delta/")
+
+        out = m.command("pwd")
+        r.check("the automation leaves the shell where it should",
+                out.strip().endswith("/"), out)
+
+        out = m.command("project")
+        r.contains("an automation states what it needs", out, "needs 1 argument")
+
+        out = m.command("history 40")
+        r.contains("the journal records actions", out, "actions recorded")
+        r.contains("the journal shows what was done", out, "mkdir gamma")
+        r.contains("an automation is journalled as itself", out, "project delta")
+        r.missing("its expanded steps are not journalled separately",
+                  out, "mkdir delta")
+
+        # Asking the system about itself must not become something it
+        # observes, or inspecting it would teach it to inspect itself.
+        for _ in range(4):
+            m.command("help")
+
+        out = m.command("history 12")
+        r.missing("inspecting the system is not itself recorded", out, "help")
+
+        out = m.command("forget project")
+        r.contains("an automation can be forgotten", out, "forgot `project`")
+
+        out = m.command("project epsilon")
+        r.contains("a forgotten automation is gone", out, "command not found")
+
+        out = m.command("ls /auto")
+        r.missing("its file is removed too", out, "project")
 
         # Deliberately fault: this should panic, not reboot or hang.
         print("\nfault handling:")
