@@ -13,4 +13,11 @@ void serial_putchar(char c);
 void serial_write(const char *s);
 bool serial_available(void);
 
+/*
+ * Start delivering received bytes into the console input queue, so the
+ * machine can be driven over a serial line as well as from the keyboard.
+ * Requires the IDT and PIC to be up.
+ */
+void serial_enable_input(void);
+
 #endif /* NEBULA_SERIAL_H */

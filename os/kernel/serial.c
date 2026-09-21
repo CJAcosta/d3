@@ -3,6 +3,8 @@
  */
 
 #include "serial.h"
+#include "input.h"
+#include "idt.h"
 #include "io.h"
 
 #define COM1 0x3F8
@@ -15,7 +17,11 @@
 #define UART_MODEM_CTRL  4
 #define UART_LINE_STATUS 5
 
-#define LSR_TX_EMPTY 0x20
+#define LSR_DATA_READY 0x01
+#define LSR_TX_EMPTY   0x20
+
+#define IER_RX_AVAILABLE 0x01
+#define IRQ_COM1 4
 
 static bool serial_ready;
 
@@ -66,4 +72,26 @@ void serial_write(const char *s)
 {
     while (*s)
         serial_putchar(*s++);
+}
+
+/*
+ * Drain every byte the UART has buffered. The 16550 only re-asserts its
+ * interrupt when the FIFO crosses the trigger level again, so leaving
+ * bytes behind would stall input until the next keystroke.
+ */
+static void serial_irq(struct registers *regs)
+{
+    (void)regs;
+
+    while (inb(COM1 + UART_LINE_STATUS) & LSR_DATA_READY)
+        input_push((char)inb(COM1 + UART_DATA));
+}
+
+void serial_enable_input(void)
+{
+    if (!serial_ready)
+        return;
+
+    outb(COM1 + UART_IER, IER_RX_AVAILABLE);
+    irq_register(IRQ_COM1, serial_irq);
 }

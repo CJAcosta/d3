@@ -8,10 +8,10 @@
  */
 
 #include "keyboard.h"
+#include "input.h"
 #include "idt.h"
 #include "io.h"
 #include "kprintf.h"
-#include "sched.h"
 
 #define KBD_DATA   0x60
 #define KBD_STATUS 0x64
@@ -24,8 +24,6 @@
 #define SC_CTRL   0x1D
 #define SC_ALT    0x38
 #define SC_CAPS   0x3A
-
-#define BUFFER_SIZE 256
 
 /* Scan code -> ASCII, unshifted. Index is the scan code itself. */
 static const char keymap[128] = {
@@ -44,26 +42,10 @@ static const char keymap_shift[128] = {
     0,    '*',  0,  ' ',
 };
 
-static volatile char   buffer[BUFFER_SIZE];
-static volatile size_t head;    /* next write position */
-static volatile size_t tail;    /* next read position  */
-
 static bool shift_down;
 static bool ctrl_down;
 static bool caps_lock;
 static bool extended;
-
-static void buffer_push(char c)
-{
-    size_t next = (head + 1) % BUFFER_SIZE;
-
-    /* Drop the keystroke rather than overwrite unread input. */
-    if (next == tail)
-        return;
-
-    buffer[head] = c;
-    head = next;
-}
 
 static void keyboard_irq(struct registers *regs)
 {
@@ -128,74 +110,7 @@ static void keyboard_irq(struct registers *regs)
             c = (char)(c - 'A' + 1);
     }
 
-    buffer_push(c);
-}
-
-char keyboard_poll(void)
-{
-    char c;
-
-    if (head == tail)
-        return 0;
-
-    c = buffer[tail];
-    tail = (tail + 1) % BUFFER_SIZE;
-
-    return c;
-}
-
-char keyboard_getchar(void)
-{
-    for (;;) {
-        char c = keyboard_poll();
-        if (c)
-            return c;
-
-        /* Nothing queued: let other tasks run instead of spinning. */
-        sched_yield();
-    }
-}
-
-size_t keyboard_readline(char *buf, size_t size)
-{
-    size_t len = 0;
-
-    if (size == 0)
-        return 0;
-
-    for (;;) {
-        char c = keyboard_getchar();
-
-        if (c == '\n' || c == '\r') {
-            kputchar('\n');
-            break;
-        }
-
-        if (c == '\b') {
-            if (len > 0) {
-                len--;
-                kputchar('\b');
-            }
-            continue;
-        }
-
-        /* Ctrl+C abandons the line. */
-        if (c == 3) {
-            kprintf("^C\n");
-            len = 0;
-            break;
-        }
-
-        /* Ignore anything unprintable, and keep room for the NUL. */
-        if (c < ' ' || c > '~' || len + 1 >= size)
-            continue;
-
-        buf[len++] = c;
-        kputchar(c);
-    }
-
-    buf[len] = '\0';
-    return len;
+    input_push(c);
 }
 
 void keyboard_init(void)
@@ -205,7 +120,6 @@ void keyboard_init(void)
     while (inb(KBD_STATUS) & 1)
         (void)inb(KBD_DATA);
 
-    head = tail = 0;
     shift_down = ctrl_down = caps_lock = extended = false;
 
     irq_register(IRQ_KEYBOARD, keyboard_irq);
