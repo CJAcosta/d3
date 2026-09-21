@@ -1,0 +1,229 @@
+# Nebula OS
+
+A small operating system for 32-bit x86, written from scratch in C and
+assembly. It boots from its own 512-byte boot sector on bare metal (or
+QEMU), runs in protected mode with paging, preemptively schedules kernel
+threads, and drops you into an interactive shell.
+
+```
+Nebula OS 0.1.0
+a small 32-bit x86 kernel
+
+[boot] loaded from drive 0x00
+[gdt] flat descriptors loaded, TSS installed
+[idt] 256 vectors installed, PIC remapped to 0x20-0x2f
+[pmm] 127 MiB usable, 32736 frames (32480 free), bitmap at 0x0001f000
+[paging] identity mapped 0-127 MiB, directory at 0x00100000
+[heap] 68 KiB at 0xd0000000
+[cpu] interrupts enabled
+[sched] round-robin scheduler up, slice 5 ticks
+[fs] in-memory filesystem mounted at / (6 nodes)
+
+Welcome to Nebula OS. Type `help` to get started.
+
+nebula:/$
+```
+
+There is no third-party code here: no bootloader, no libc, no driver
+framework. The BIOS hands over 512 bytes and everything after that is in
+this directory.
+
+## Quick start
+
+```sh
+make            # build build/nebula.img, a 1.44 MiB bootable floppy image
+make run        # boot it in QEMU with a graphical console
+make run-text   # boot it headless, with the console on your terminal
+make check      # run the full test suite
+```
+
+Requires `gcc` with 32-bit support (`gcc-multilib`), GNU `binutils`, and
+`qemu-system-i386` to run. The kernel builds with the ordinary system
+compiler -- no cross-toolchain needed.
+
+With `make run-text` you can type at the shell directly: the serial port
+is wired up as a console input, so the keyboard and the terminal feed the
+same input queue.
+
+## How the boot works
+
+The BIOS reads one sector from the floppy to `0x7C00` and jumps to it in
+16-bit real mode. From there, `boot/boot.S`:
+
+1. Normalises the segment registers and sets up a stack.
+2. Walks the BIOS `E820` memory map and stashes it at `0x5000`, because
+   this information is only available before leaving real mode -- the
+   kernel would have no way to discover it later.
+3. Reads the kernel from disk to `0x10000`, one sector at a time with
+   retries and a disk reset between attempts. It advances the segment
+   register rather than the offset between sectors, which sidesteps the
+   64 KiB wrap that bites naive multi-sector loaders.
+4. Enables the A20 gate, so addresses above 1 MiB stop aliasing.
+5. Installs a flat GDT, sets `CR0.PE`, and far-jumps into 32-bit code.
+
+The number of sectors to read is not hardcoded: the Makefile builds the
+kernel first, measures it, and assembles the boot sector with the real
+count. A kernel that outgrows the loader is a build error, not a
+mysterious crash.
+
+`kernel/entry.S` then zeroes `.bss` and switches to a kernel-owned stack
+before calling `kmain`.
+
+## Layout
+
+```
+boot/boot.S       boot sector: real mode -> protected mode
+kernel/entry.S    32-bit entry: zero .bss, set up the stack, call kmain
+kernel/kmain.c    subsystem bring-up and boot-time self-tests
+
+kernel/gdt.c      segment descriptors, ring-3 segments, TSS
+kernel/idt.c      interrupt descriptor table and dispatch
+kernel/isr.S      interrupt stubs that normalise the CPU's frames
+kernel/pic.c      8259A interrupt controllers
+kernel/switch.S   the context switch
+
+kernel/pmm.c      physical frame allocator (bitmap over the E820 map)
+kernel/paging.c   two-level paging
+kernel/heap.c     kernel heap: first-fit, splitting and coalescing
+kernel/sched.c    preemptive round-robin scheduler
+
+kernel/vga.c      80x25 text console
+kernel/serial.c   16550 UART on COM1, in and out
+kernel/keyboard.c PS/2 keyboard
+kernel/timer.c    programmable interval timer at 100 Hz
+kernel/rtc.c      CMOS real-time clock
+kernel/input.c    shared console input queue and line editor
+
+kernel/fs.c       in-memory filesystem
+kernel/shell.c    the interactive shell
+kernel/string.c   freestanding string and memory routines
+kernel/kprintf.c  formatted output and panic
+```
+
+## Memory
+
+Physical memory comes from the BIOS `E820` map. Everything the allocator
+manages is identity mapped, so a physical address is always usable as a
+pointer inside the kernel -- which is what makes editing page tables
+straightforward, since a table's physical address is also where you write
+to it.
+
+```
+0x00000000 - 0x000FFFFF   reserved: IVT, BIOS data, boot sector, video memory
+0x00010000 - ...          the kernel image
+      ... - ...           the physical frame bitmap, right after the kernel
+0x000B8000                VGA text buffer
+0xD0000000 - 0xD1000000   kernel heap (mapped on demand, 16 MiB ceiling)
+```
+
+The heap deliberately lives above the identity-mapped region: it grows by
+asking the frame allocator for pages and mapping them at the next free
+virtual address, so it exercises the MMU rather than sitting in a
+pre-reserved block. One of the boot self-tests asserts exactly this --
+that a heap pointer resolves to a *different* physical address.
+
+Frames above 1 GiB are left unmanaged. Mapping the full 4 GiB would cost
+4 MiB of page tables to describe memory this kernel has no use for.
+
+## Scheduling
+
+Tasks are kernel threads: they share the kernel address space and each
+owns a 16 KiB stack. A circular list is the run queue, and the timer
+interrupt preempts the running task when its five-tick slice expires.
+
+Two details are load-bearing, and both cost a debugging session if you
+get them wrong:
+
+- **The PIC is acknowledged before the handler runs.** The timer handler
+  can context-switch away and not return for several slices. If the EOI
+  waited until the handler returned, the controller would hold IRQ0
+  in-service forever and no further timer interrupts would arrive --
+  preemption would stop after exactly one switch.
+
+- **`schedule()` never enables interrupts.** It runs inside the timer
+  interrupt, where an `sti` would let the timer re-enter the handler on
+  the same stack. Callers that genuinely need to wait (`sched_sleep`,
+  `sched_exit`) do their idling outside it, in task context.
+
+A new task gets a synthetic stack laid out so that the context switch's
+final `ret` lands on its entry point, with a return address pointing at
+an exit trampoline. That way a task that simply returns is cleaned up
+rather than running off into whatever was on the stack.
+
+## The shell
+
+21 commands, all built in:
+
+| | |
+|---|---|
+| `help` `clear` `echo` `uname` | basics |
+| `ls` `cd` `pwd` `cat` `mkdir` `write` `append` `rm` | filesystem |
+| `mem` `memmap` | physical memory, heap and BIOS map |
+| `ps` `spawn` `sleep` `uptime` `date` | tasks and time |
+| `fault` `reboot` | deliberately page-fault; restart |
+
+`spawn` starts a background worker that prints and sleeps, which is the
+quickest way to watch preemption actually happening: run `spawn 5` and
+keep typing.
+
+`fault` writes to an unmapped address on purpose. The trap handler
+reports the faulting address, decodes the error code, and halts:
+
+```
+*** KERNEL PANIC ***
+page fault writing 0x40000000 from kernel mode
+  cause: page not present
+  eip=0x00013fd3  eflags=0x00000286
+System halted.
+```
+
+## Testing
+
+```sh
+make unit-test   # host-side unit tests, no emulator needed  (84 checks)
+make test        # boot in QEMU and drive the shell           (42 checks)
+make check       # both
+```
+
+The two suites cover different things on purpose.
+
+`tests/host_tests.c` compiles the hardware-independent code -- the string
+routines, the printf formatter, the filesystem -- for the host and tests
+it directly, with `kmalloc` redirected to `malloc` and a switch to make
+allocation fail on demand. This is where the awkward edge cases live:
+truncation, overlapping `memmove`, integer overflow, malformed paths,
+out-of-memory paths. It runs in milliseconds.
+
+`scripts/boot-test.py` boots the real image under QEMU and drives the
+real shell over the serial console, asserting on what comes back. It
+covers what only a running machine can show: that the boot sector loads
+the kernel, that paging translates, that interrupts fire, that a spawned
+task is actually scheduled while the shell sleeps, and that a bad memory
+access produces a diagnosed panic rather than a reboot loop.
+
+`kmain` also runs a set of self-tests at boot, printed to the console, so
+a machine that boots wrong says so on screen.
+
+If you need to see inside a boot that is failing before the console is
+up, `scripts/qemu-probe.py` dumps the VGA text buffer and CPU state from
+the QEMU monitor.
+
+## What is not here
+
+Worth being explicit, since these are the obvious next steps rather than
+oversights:
+
+- **No user mode.** The GDT has ring-3 segments and a TSS, and there is a
+  DPL-3 syscall gate at `int $0x80`, but nothing runs in ring 3 yet.
+  Every task is a kernel thread.
+- **No disk driver.** The boot sector's BIOS reads are the only disk I/O.
+  The filesystem is in RAM and does not survive a reboot.
+- **No ELF loader**, so there are no separate programs: the shell and its
+  commands are compiled into the kernel.
+- **Single processor.** No APIC, no SMP.
+- **The scheduler is round-robin with a fixed slice.** No priorities, no
+  blocking primitives beyond sleep.
+
+## License
+
+Same license as the containing repository.

@@ -20,11 +20,16 @@ typedef uint32_t           size_t;
 typedef int32_t            ssize_t;
 typedef uint32_t           uintptr_t;
 
+#define INT32_MAX  2147483647
+#define UINT32_MAX 4294967295u
+
 typedef int                bool;
 #define true  1
 #define false 0
 
+#ifndef NULL
 #define NULL ((void *)0)
+#endif
 
 /* Physical and virtual addresses are distinct concepts; name them so. */
 typedef uint32_t physaddr_t;

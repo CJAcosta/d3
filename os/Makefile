@@ -41,7 +41,7 @@ IMAGE  := $(BUILD)/nebula.img
 KERNEL := $(BUILD)/kernel.bin
 BOOT   := $(BUILD)/boot.bin
 
-.PHONY: all clean run run-text test debug
+.PHONY: all clean run run-text test unit-test check debug
 .DELETE_ON_ERROR:
 
 all: $(IMAGE)
@@ -100,3 +100,20 @@ test: $(IMAGE)
 
 clean:
 	rm -rf $(BUILD)
+
+# Host-side unit tests for the kernel's hardware-independent logic.
+# Compiled for the host (still -m32, so the kernel's 32-bit type widths
+# hold) and linked against libc, with kmalloc and friends redirected to
+# malloc by the test harness.
+HOST_TEST_SOURCES := tests/host_tests.c $(SRCDIR)/string.c \
+                     $(SRCDIR)/kprintf.c $(SRCDIR)/fs.c
+
+$(BUILD)/host_tests: $(HOST_TEST_SOURCES) | $(BUILD)
+	$(CC) -m32 -std=gnu11 -g -O1 -Wall -Wextra -Wno-unused-parameter \
+	      -fno-builtin -I$(INCDIR) -o $@ $(HOST_TEST_SOURCES)
+
+unit-test: $(BUILD)/host_tests
+	@$(BUILD)/host_tests
+
+# Everything: fast host tests first, then the full boot tests.
+check: unit-test test

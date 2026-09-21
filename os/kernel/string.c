@@ -162,9 +162,19 @@ int atoi_safe(const char *s)
     while (*s) {
         if (*s < '0' || *s > '9')
             return -1;
-        value = value * 10 + (*s - '0');
-        if (value < 0)          /* overflowed into the sign bit */
+
+        int digit = *s - '0';
+
+        /*
+         * Check for overflow *before* it happens. Testing the result for
+         * a negative value afterwards is both undefined behaviour and
+         * wrong: a long enough digit string wraps back into positive
+         * territory and slips through.
+         */
+        if (value > (INT32_MAX - digit) / 10)
             return -1;
+
+        value = value * 10 + digit;
         s++;
     }
 
