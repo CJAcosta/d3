@@ -92,6 +92,28 @@ The platform cannot be chosen without these.
 - **Access:** how fruit leaves the field today (sacks carried uphill or
   downhill, cable lines, vehicles) and how far.
 
+### 4b. Foot grip on the soil
+
+The walking simulation turned on one number: how hard a foot can be pushed
+along the slope before it slides, as a share of how hard it presses down (the
+friction coefficient). Grip 0.5 limits a robot to 40% grade; 1.2 lets it walk
+80–100%. Nobody has measured it for robot feet on Puerto Rico coffee soils.
+
+**Kit:** two test feet on short handles, both about 4 cm across. One is a
+rubber pad; the other is a cluster of 3–4 blunt spikes about 1.5 cm long, the
+way a crab's pointed leg tips bite. Add a 5 kg weight that sits on top of a
+foot, and the force gauge from item 1.
+
+**Test:** on flat spots in the rows (paths and between plants), put the
+weighted foot down. Pull it level along the ground and record the peak force
+before it moves. The grip is that peak force divided by the weight's force,
+which is about 49 N for 5 kg. Run 10 pulls per foot type, for each of:
+
+- dry soil;
+- wet soil (within a day of rain);
+- leaf litter;
+- bare clay.
+
 ## 5. Today's picking, as the baseline
 
 Video three or four pickers for 15 minutes each, recording branches per
@@ -106,7 +128,9 @@ Each item maps to a parameter in `coffeesim/params.py`:
 | Item | Replaces |
 |---|---|
 | 1 | `DETACH_MEAN_N`, `DETACH_CV`, `PEDUNCLE_STIFFNESS` |
+| 1b | `PickerConfig.suction_cap`, and whether suction works at all |
 | 2 | `Cherry` |
 | 3 | `Branch`: geometry, `stage_mix`, `youngs_modulus` |
-| 4 | Platform study inputs (`docs/platform-crab.md`) |
+| 4 | Slope maps from farm boundaries (`scripts/pr_slopes.py`) and row layout |
+| 4b | Foot grip, `MUS` in `scripts/walk_sweep.py` |
 | 5 | `throughput.py` baselines |

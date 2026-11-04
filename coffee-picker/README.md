@@ -85,7 +85,9 @@ Video: [`results/single_pick.mp4`](results/single_pick.mp4), played at 2× speed
 Every attempt is in [`results/single_pick.json`](results/single_pick.json).
 
 A crab-bodied robot works one simulated branch (with leaves) from the
-downhill side of a 30% slope. Each cycle:
+downhill side of a 30% slope. That is gentler than three quarters of the
+coffee belt; see [Walking the slopes](#walking-the-slopes-the-crab-platform).
+Each cycle:
 
 1. **Look.** Two stalk cameras take colour and depth. Red and dark-red pixels
    are grouped into fruit, and each fruit gets a 3D position. A fruit is
@@ -166,6 +168,65 @@ hour, because so little fruit is left on each tree.
 - a claw that can slip;
 - the other side of the plant.
 
+## Walking the slopes: the crab platform
+
+![Two crabs on a 50% slope](results/walk_demo.png)
+
+Video: [`results/walk_demo.mp4`](results/walk_demo.mp4). Both crabs have the
+same mass, legs, gait and grip. The left one holds a fixed posture tilted with
+the ground, as a real crab does; the right one leans its body half the slope.
+
+**How steep the coffee belt is.** USGS 10 m elevation data, 250–1000 m,
+1,705 km² of the western Cordillera Central:
+
+| Grade | Share of the belt no steeper |
+|---|---|
+| 30% (limit of Brazilian harvesting machines) | 22% |
+| 45% | 43% |
+| 60% | 66% |
+| 80% | 88% |
+
+The median is **49%**. The source is
+[`scripts/pr_slopes.py`](scripts/pr_slopes.py). The elevation band also holds
+forest and pasture, so PROCAFE farm boundaries would sharpen this.
+
+**The walking crab** (`coffeesim/walker.py`):
+
+- six legs with three joints each, 22 kg plus legs;
+- walking 1 m sideways along the contour at 4 cm/s;
+- 288 runs across footprint (classic: legs to the sides; deep: also spread
+  front to back), posture (body tilted with the ground, level, or leaning
+  half), gait (tripod or wave), grade (0–100%) and foot grip (0.5, 0.8 or
+  1.2, assumed);
+- a full 6 kg basket on the downhill side for some runs.
+
+![Share of the coffee belt each crab design can walk](results/walk_coverage.png)
+
+1. **A crab that tilts with the ground tips over.** Its centre of mass moves
+   downhill of its feet as the slope steepens. Walking, with one foot always
+   in the air, the classic crab tips at 20% grade, which leaves under 11% of
+   the belt. Keeping the body level or leaning lifts that to 66% at grip 0.8.
+   This is the most important design choice.
+2. **Then foot grip sets the ceiling.** No leg design beats the friction
+   between foot and soil. With grip 0.5 every design stops at 40% grade (36%
+   of the belt); at 0.8, 60% (66%); at 1.2, 80–100% (88–96%). Feet that bite
+   into soil, like a crab's pointed tips, are worth more than any layout. The
+   real grip is unmeasured; field protocol item 4b measures it with a
+   weighted foot and the force gauge.
+3. **The deep footprint is the one that can carry a load.** The classic
+   footprint reaches the steepest ground empty, but with 2–4 cm of stability
+   margin. A full basket on its downhill side tips it by 40%. The deep
+   footprint with a leaning body keeps 9–13 cm of margin and walks 80% grade
+   at grip 1.2, basket and all.
+4. **Joints peak at 20–35 N m** across the walkable cases.
+
+The simple gait controller falls one grade step short of the ideal (slides
+when grade passes grip), because stiff legs share the downhill load
+unevenly. Force-controlled legs should close that gap. Details, the corrected
+tipping physics and what is still untested are in
+[`docs/platform-crab.md`](docs/platform-crab.md); full tables are in
+[`results/walk_summary.md`](results/walk_summary.md).
+
 ## What is in the model
 
 ![Three moments of a comb pass](results/comb_pass.png)
@@ -195,11 +256,15 @@ Every number in `coffeesim/params.py` names its source or is marked
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q tests                  # 11 tests, ~25 s
+python -m pytest -q tests                  # 16 tests, ~30 s
 python scripts/run_sweep.py                # 240 runs, ~7 min on 4 cores
 python scripts/summarize.py                # results/summary.md + tradeoff.png
 MUJOCO_GL=osmesa python scripts/render_pass.py   # results/comb_pass.png (headless needs libosmesa6)
 MUJOCO_GL=osmesa python scripts/pick_demo.py     # single-fruit picker video, ~20 min headless (needs ffmpeg)
+python scripts/pr_slopes.py                      # coffee-belt slopes from USGS (needs rasterio, network)
+python scripts/walk_sweep.py                     # 288 walking runs, ~5 min on 4 cores
+python scripts/walk_summary.py                   # results/walk_summary.md + walk_coverage.png
+MUJOCO_GL=osmesa python scripts/walk_demo.py     # two crabs on a 50% slope, ~1 min
 ```
 
 ## Layout
@@ -214,6 +279,8 @@ MUJOCO_GL=osmesa python scripts/pick_demo.py     # single-fruit picker video, ~2
 | `coffeesim/throughput.py` | Fruit/s and kg/h against people, arms, the Puerto Rico shaker |
 | `coffeesim/picker.py` | Two-armed crab: cameras, claw, suction cup, picking loop |
 | `scripts/pick_demo.py` | Films the picker; writes the video, stills and attempt log |
+| `coffeesim/walker.py` | Six-legged crab walking the contour: gaits, postures, leg IK |
+| `scripts/pr_slopes.py` | Slope distribution of the coffee belt from USGS elevation data |
 | `docs/field-protocol.md` | What PROCAFE can measure to replace the assumptions |
 | `docs/platform-crab.md` | The crab body plan on Puerto Rico slopes |
 
@@ -226,8 +293,10 @@ MUJOCO_GL=osmesa python scripts/pick_demo.py     # single-fruit picker video, ~2
    branches during the Puerto Rico harvest. It measures what the simulation
    cannot: leaf and bud damage, and lateral pull-off. A dial-a-force comb
    costs little and answers the main question directly.
-3. **Platform.** Crab-hexapod against quadruped against tracked carrier, on
-   slope profiles from Puerto Rico lidar (`docs/platform-crab.md`).
+3. **Platform.** First pass done: the crab-hexapod walking smooth slopes
+   (above). Next: rough ground from 1 m lidar of PROCAFE farms,
+   force-controlled legs, arms working on the slope, and the same tests for a
+   quadruped and a tracked carrier (`docs/platform-crab.md`).
 4. **Perception.** Branch and ripeness detection under canopy shade, trained
    on the field photos from the protocol.
 
@@ -241,4 +310,6 @@ MUJOCO_GL=osmesa python scripts/pick_demo.py     # single-fruit picker video, ~2
 - Brudden DSC-18 evaluation in Puerto Rico (UPR Mayagüez, 2023). [scholar.uprm.edu](https://scholar.uprm.edu/entities/publication/5eb4945e-126d-401e-b887-dd25eadd8d8c)
 - Dual-arm apple harvester field evaluation (2025). [arXiv 2506.05714](https://arxiv.org/abs/2506.05714)
 - USGS Puerto Rico lidar 2015–2017 (1 m DEMs). [NOAA InPort 54852](https://www.fisheries.noaa.gov/inport/item/54852)
+- USGS 3DEP 1/3 arc-second elevation, tile n19w067 (used for the coffee-belt slopes). [The National Map](https://apps.nationalmap.gov/downloader/)
+- Carcinization: at least five origins and seven losses of the crab body plan. [Scientific American](https://www.scientificamerican.com/article/why-do-animals-keep-evolving-into-crabs/)
 - NVIDIA SimReady assets on Hugging Face. [nvidia/simready-assets](https://huggingface.co/datasets/nvidia/simready-assets), [deeproboticslab/simready-assets](https://huggingface.co/datasets/deeproboticslab/simready-assets)
