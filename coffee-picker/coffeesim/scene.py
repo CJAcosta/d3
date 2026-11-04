@@ -103,6 +103,20 @@ def _node_cherries(j, branch, cherry, stages, rng, out):
     return "".join(xml)
 
 
+def _leaf_pair(x, start=0.024, half_len=0.06, half_width=0.022, droop=0.3):
+    """Two blades at a node, pointing to +y and -y, starting outside the fruit
+    cluster and drooping. No collisions; 1.5 g each."""
+    xml = []
+    for side in (1, -1):
+        d = np.array([0.0, side * np.cos(droop), -np.sin(droop)])
+        centre = np.array([x, 0.0, 0.0]) + d * (start + half_len)
+        xml.append(
+            f'<geom type="ellipsoid" pos="{_fmt(centre)}" euler="{-side * droop:.4g} 0 0" '
+            f'size="{half_width} {half_len} 0.0015" mass="0.0015" rgba=".13 .38 .15 1" '
+            f'contype="0" conaffinity="0"/>')
+    return "".join(xml)
+
+
 def _branch_xml(branch, cherry, stages, rng, out):
     L = branch.internode
     xml = []
@@ -118,6 +132,7 @@ def _branch_xml(branch, cherry, stages, rng, out):
             f'<body name="seg{j}" pos="{pos}">{hinges}'
             f'<geom type="capsule" fromto="0 0 0 {L} 0 0" size="{r:.6g}" density="{branch.wood_density}" '
             f'rgba=".45 .32 .2 1" {BRANCH}/>'
+            + (_leaf_pair(L) if branch.leaves else "")
             + _node_cherries(j, branch, cherry, stages, rng, out))
     xml.append("</body>" * branch.n_nodes)
     return "".join(xml)
@@ -170,11 +185,13 @@ def _comb_xml(comb, branch, cherry):
 
 
 def build_scene(branch=None, cherry=None, comb=None, rng=None, stages=None,
-                timestep=4e-4):
+                timestep=4e-4, extra_asset="", extra_world="", extra_sections=""):
     """Return a SceneInfo with MJCF text and per-cherry bookkeeping.
 
     `stages` fixes the ripeness of each occupied fruit site in order;
-    otherwise they are drawn from `branch.stage_mix`.
+    otherwise they are drawn from `branch.stage_mix`. The `extra_*` strings
+    are spliced into <asset>, <worldbody> and after it (actuators, sensors),
+    so other tools such as the picking arm can share the branch.
     """
     branch = branch or Branch()
     cherry = cherry or Cherry()
@@ -203,13 +220,15 @@ def build_scene(branch=None, cherry=None, comb=None, rng=None, stages=None,
     <global offwidth="1280" offheight="720"/>
     <headlight ambient=".35 .35 .35" diffuse=".65 .65 .65" specular=".1 .1 .1"/>
   </visual>
-  <asset><texture type="skybox" builtin="gradient" rgb1=".93 .94 .92" rgb2=".72 .78 .74" width="64" height="64"/></asset>
+  <asset><texture type="skybox" builtin="gradient" rgb1=".93 .94 .92" rgb2=".72 .78 .74" width="64" height="64"/>{extra_asset}</asset>
   <worldbody>
     <light pos="0.2 -0.4 1.8" dir="0 0.3 -1"/>
     <geom type="cylinder" fromto="0 0 0.6 0 0 1.4" size="0.012" rgba=".35 .25 .15 1" contype="0" conaffinity="0"/>
     {body}
     {_comb_xml(comb, branch, cherry) if comb else ""}
+    {extra_world}
   </worldbody>
+  {extra_sections}
 </mujoco>"""
     return SceneInfo(xml=xml, stages=out["stages"], node_of=np.array(out["node_of"]),
                      stiffness=np.array(out["stiffness"]), branch=branch, comb=comb)

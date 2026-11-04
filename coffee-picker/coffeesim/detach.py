@@ -11,16 +11,21 @@ class Detacher:
     spring itself low-passes contact spikes, as real tissue does.
     """
 
-    def __init__(self, model, data, info, thresholds, evacuate=False):
+    def __init__(self, model, data, info, thresholds, evacuate=False, spin_damping=False):
         """`evacuate` drops released fruit out of collision at once, standing
         in for an end effector that channels picked fruit away (catch tube,
         suction). Without it, loose fruit stays in play and can be plowed
-        into fruit still on the branch."""
+        into fruit still on the branch.
+
+        `spin_damping` keeps a little rotational damping on loose fruit. Fruit
+        left in play (rolling in a basket, say) otherwise spins up numerically
+        on its tiny rotational inertia."""
         n = len(info.stages)
         if len(thresholds) != n:
             raise ValueError("one threshold per cherry")
         self.model, self.data = model, data
         self.evacuate = evacuate
+        self.spin_damping = spin_damping
         self.geom = np.array([model.body_geomadr[model.body(f"cherry{k}").id] for k in range(n)])
         self.thresholds = np.asarray(thresholds, dtype=float)
         self.stiffness = np.asarray(info.stiffness, dtype=float)
@@ -42,7 +47,7 @@ class Detacher:
         for k in np.atleast_1d(idx):
             joints = np.append(self.slide_jnt[k], self.bend_jnt[k])
             m.jnt_stiffness[joints] = 0.0
-            for j in joints:
+            for j in (self.slide_jnt[k] if self.spin_damping else joints):
                 adr, n = m.jnt_dofadr[j], (3 if m.jnt_type[j] == mujoco.mjtJoint.mjJNT_BALL else 1)
                 m.dof_damping[adr:adr + n] = 0.0
             if self.evacuate:

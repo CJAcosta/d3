@@ -46,6 +46,22 @@ exposure and recent rain.
 and log force against displacement. The simulator's peduncle stiffness (green
 about 4000 N/m, ripe about 800 N/m) was read off a 25-year-old plot.
 
+### 1b. Does a small suction cup hold a cherry? (if a vacuum pump is at hand)
+
+The single-fruit picker relies on a 10 mm cup letting go at about 5 N. That
+cap is the vacuum level times the cup's area, and it acts as the physical
+ripeness check. Whether a cup seals on a real cherry, and holds it, is the
+first thing to check.
+
+**Kit:** a small vacuum pump or venturi with a gauge, and a 10–12 mm bellows
+cup on a hand-held tube. Clip the force gauge from item 1 behind the cup.
+
+**Test:** on 20 ripe and 20 green fruit, in dry and wet conditions:
+
+- record whether the cup seals at all;
+- record the pull at which the seal fails or the fruit comes off;
+- record which of the two happened.
+
 ## 2. Fruit size and mass
 
 Weigh (to 0.01 g) and caliper 20 fruit per stage per variety. The model uses

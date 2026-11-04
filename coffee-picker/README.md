@@ -7,10 +7,12 @@ its history.
 
 ## The question this milestone answers
 
-Picking one fruit at a time cannot pay. A selective picker in Colombia takes
+Picking one fruit at a time is slow. A selective picker in Colombia takes
 82.6 kg of cherry a day (Cenicafé). That is about 1.9 fruit per second, at
 1.53 g per fruit. The best published fruit-picking arm takes 7.5 s per fruit,
-so it would take **14 arms to match one person**.
+so it would take **14 arms to match one person** working the same hours.
+(One-at-a-time picking is still worth seeing working; see
+[Single-fruit picking](#single-fruit-picking-two-claws-and-a-suction-cup).)
 
 The opening is a property of the fruit itself. Ripe cherries come off at about
 3.3 N; green ones hold until about 8.8 N (Sampaio 2000, five arabica
@@ -75,6 +77,95 @@ Full tables: [`results/summary.md`](results/summary.md). Raw runs:
 - wind and rain;
 - the branch being held by a second hand.
 
+## Single-fruit picking: two claws and a suction cup
+
+![Claw closes, cup seals, fruit comes off, into the basket](results/single_pick_frames.png)
+
+Video: [`results/single_pick.mp4`](results/single_pick.mp4), played at 2× speed.
+Every attempt is in [`results/single_pick.json`](results/single_pick.json).
+
+A crab-bodied robot works one simulated branch (with leaves) from the
+downhill side of a 30% slope. Each cycle:
+
+1. **Look.** Two stalk cameras take colour and depth. Red and dark-red pixels
+   are grouped into fruit, and each fruit gets a 3D position. A fruit is
+   skipped if anything else (a green fruit, a leaf, the branch) sits inside
+   the cup's footprint in front of it. Nearby brown pixels are fitted to a
+   line to find the branch.
+2. **Steady the branch.** The left claw closes on the bare wood 2.6 cm inboard
+   of the fruit, between clusters. The robot then looks again, because the
+   claw can nudge the branch on its way in.
+3. **Seal and pull.** The right arm brings a 10 mm suction cup along the
+   camera's line of sight and stops at first touch. It then pulls straight
+   out from the branch, as a picker's fingers do.
+4. **The cap decides.** The cup can pull at most 5 N (vacuum × cup area).
+   Ripe fruit (about 3.3 N) comes off; green fruit (about 8.8 N) cannot. So
+   even when the cup lands on the wrong fruit, a green one stays on the plant.
+5. **Back straight out, then swing to the basket.** Backing out first keeps
+   the swing from sweeping through other fruit.
+
+Results on the default branch (47 ripe or overripe of 76 fruit, about half of
+them on the far side, facing the next row):
+
+| | Two claws | Cup arm only |
+|---|---|---|
+| Attempts | 40 | 61 |
+| Attempts that took their fruit | 28 (70%) | 24 (39%) |
+| Ripe/overripe in the basket | **27** | 26 |
+| Of those facing the robot | 19 of 23 | 19 of 23 |
+| Green or half-ripe in the basket | **0** | 0 |
+| Green or half-ripe knocked off | **0** | 0 |
+| Sim time | 7.6 min | 8.2 min |
+
+What the two-claw run's failures were:
+
+- **Held on (7).** Four attempts were on ripe fruit that needed more than
+  5 N (three fruit, one tried twice); the cap left them on, as designed.
+  Three were green or half-ripe neighbours the cup touched first; the cap
+  protected those too.
+- **Seal slipped (3).** All were fruit where the claw could not get a hold,
+  so the pull bent the peduncle sideways.
+- **Branch bent instead (1).** Also unheld.
+- **Wrong fruit (1).** A ripe neighbour came off instead of the target.
+
+Of the 30 ripe or overripe fruit that came off, 27 reached the basket. The
+cup arm knocked one off during an unheld pick near the trunk; the other two
+missed or bounced out of the basket.
+
+Every held fruit that came off did so at its own pull-off force. Without the claw,
+12 attempts ended with 12 cm of pull and the fruit still on, because the
+thin outer branch just bent toward the robot.
+
+### Working more hours does not close the gap alone
+
+The moves here are deliberately slow: 10.5 s per successful pick, and 16.9 s
+per fruit in the basket once looks and failures are counted. At that pace:
+
+| | Fruit per day | kg cherry per day |
+|---|---|---|
+| Person, 8 h, selective (Cenicafé) | 54,000 | 82.6 |
+| This robot, 20 h | 4,300 | 6.5 |
+| Same robot at 7.5 s per fruit (best apple arm), 20 h | 9,600 | 14.7 |
+| Same robot at 3 s per fruit, 20 h | 24,000 | 36.7 |
+
+To match one picker in a 20-hour day, a robot needs about **1.3 s per fruit**.
+Working longer hours is worth 2.5×. Getting per-fruit time from 17 s down to
+a few seconds is worth more, and that is mostly arm speed and fewer failed
+attempts.
+
+Where a slow, tireless picker may already earn its keep is the gleaning pass
+after the main harvest. That pass takes the last ripe and overripe fruit the
+berry borer would otherwise breed in. It also pays a picker the least per
+hour, because so little fruit is left on each tree.
+
+**Not modelled yet:**
+
+- leaves stopping arms (they only block cameras here);
+- seal quality on wet or dusty fruit;
+- real canopy light;
+- a claw that can slip;
+- the other side of the plant.
+
 ## What is in the model
 
 ![Three moments of a comb pass](results/comb_pass.png)
@@ -104,10 +195,11 @@ Every number in `coffeesim/params.py` names its source or is marked
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q tests                  # 7 tests, ~5 s
+python -m pytest -q tests                  # 11 tests, ~25 s
 python scripts/run_sweep.py                # 240 runs, ~7 min on 4 cores
 python scripts/summarize.py                # results/summary.md + tradeoff.png
 MUJOCO_GL=osmesa python scripts/render_pass.py   # results/comb_pass.png (headless needs libosmesa6)
+MUJOCO_GL=osmesa python scripts/pick_demo.py     # single-fruit picker video, ~20 min headless (needs ffmpeg)
 ```
 
 ## Layout
@@ -120,13 +212,16 @@ MUJOCO_GL=osmesa python scripts/render_pass.py   # results/comb_pass.png (headle
 | `coffeesim/trial.py` | One comb pass and its metrics |
 | `coffeesim/selectivity.py` | Perfect-cap baseline (analytic) |
 | `coffeesim/throughput.py` | Fruit/s and kg/h against people, arms, the Puerto Rico shaker |
+| `coffeesim/picker.py` | Two-armed crab: cameras, claw, suction cup, picking loop |
+| `scripts/pick_demo.py` | Films the picker; writes the video, stills and attempt log |
 | `docs/field-protocol.md` | What PROCAFE can measure to replace the assumptions |
 | `docs/platform-crab.md` | The crab body plan on Puerto Rico slopes |
 
 ## Milestones
 
 1. **Selective comb (this).** Simulation done; the field numbers it needs are
-   in `docs/field-protocol.md`.
+   in `docs/field-protocol.md`. A single-fruit picker (above) runs on the same
+   branch and fruit model, for comparison.
 2. **Bench test.** A hand-held comb with swappable tine springs, used on real
    branches during the Puerto Rico harvest. It measures what the simulation
    cannot: leaf and bud damage, and lateral pull-off. A dial-a-force comb

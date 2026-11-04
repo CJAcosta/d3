@@ -27,7 +27,17 @@ Several do.
 2. **Two claws doing two different jobs.** The comb simulation shows a fruiting
    branch whips out of the way when combed near its thin tip. Human pickers hold
    the branch with one hand and strip with the other. A crab's two chelae map
-   directly onto that: one holds the branch, the other combs it.
+   directly onto that: one holds the branch, the other combs or picks.
+
+   The single-fruit picker (`coffeesim/picker.py`) tested this on one
+   simulated branch. With one arm, the thin outer branch often just bent
+   toward the robot: 12 of 61 attempts ended with 12 cm of pull and the fruit
+   still on. With the left claw closed on the wood just inboard of the
+   cluster, every held ripe fruit that came off did so at its own pull-off
+   force, and 70% of attempts succeeded against 39% with one arm. The final
+   count was almost the same (27 against 26 of 47 ripe fruit), because the
+   one-armed robot kept retrying as the branch shifted. So the second claw
+   buys reliability and fewer wasted attempts more than extra fruit.
 3. **Many legs.** With 6–8 legs, at least 4 can stay planted while the others
    step, so the robot is always statically stable. It can also lose footing on
    one leg in mud and keep standing.

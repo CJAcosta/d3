@@ -68,6 +68,9 @@ class Branch:
     # mid-season pass in a mixed-ripeness lot.
     stage_mix: dict = field(default_factory=lambda: {
         "green": 0.30, "semi": 0.15, "ripe": 0.45, "overripe": 0.10})
+    # Draw a leaf pair at each node. Visual only (they block cameras, not
+    # tools); 12 x 5 cm blades lying flat to either side of the branch.
+    leaves: bool = False
 
 
 @dataclass
