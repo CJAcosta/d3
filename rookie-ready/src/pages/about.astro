@@ -1,0 +1,50 @@
+---
+import Base from '../layouts/Base.astro';
+import CtaBand from '../components/CtaBand.astro';
+import { site } from '../config/site';
+/*
+  PERSONALIZE THIS PAGE before launch. Real names, a photo, and your family's
+  real baseball experience are what make an affiliate site trustworthy (and
+  they are what Google's "experience" signals look for). Replace every [bracketed] note.
+*/
+---
+<Base title="About Us" description={`${site.name} is a free gear guide for baseball parents, started as a kid’s idea and built by a baseball family.`}>
+  <section class="section">
+    <div class="wrap-narrow prose">
+      <p class="eyebrow">About {site.name}</p>
+      <h1>A kid’s idea, built by a baseball family</h1>
+      <p class="lead">
+        {site.name} started with a question from our kid: “What if there was a website that told parents exactly what baseball stuff to buy?”
+      </p>
+      <p>
+        If you’ve stood in the baseball aisle holding two bats that look identical except for a tiny stamp, wondering whether 10½ or 11 inches is right, and whether RHT
+        means the glove goes on the right hand (it doesn’t), you know why. Gear for a first season is confusing, the rules change by league and age, and it’s easy to
+        spend more than you need to.
+      </p>
+      <p>
+        So we built the guide we wished we’d had: answer a few questions about your kid, and it walks you through every piece of gear, with the exact size, why it
+        matters, how to check the fit, and what you can skip.
+      </p>
+      <p><em>[Add your family’s story here: who you are, how many seasons you’ve been through, positions your kids play, the shopping mistake that started it all. A real photo helps a lot.]</em></p>
+
+      <h2>How we make recommendations</h2>
+      <ul>
+        <li><strong>Fit and rules first.</strong> Sizes come from manufacturer charts and league rulebooks, checked against what actually works for real kids.</li>
+        <li><strong>We cite our sources.</strong> Every guide links to the official rules we used, and we re-check them every season.</li>
+        <li><strong>We tell you what to skip.</strong> A first-year player doesn’t need a $300 bat. We’ll say so.</li>
+        <li><strong>Your info stays yours.</strong> The gear guide runs in your browser. We never see your kid’s name or measurements.</li>
+      </ul>
+
+      <h2>How we make money</h2>
+      <p>
+        Some shopping links are affiliate links. If you buy through them, the store pays us a small commission at no extra cost to you. That’s what keeps the site free.
+        It never changes our sizing advice. <a href="/disclosure/">Read our full disclosure</a>.
+      </p>
+
+      <h2>Spot something wrong?</h2>
+      <p>League rules change. If you notice something out of date, please email us at <a href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a> and we’ll fix it.</p>
+
+      <div style="margin-top:3rem"><CtaBand track="about_cta" /></div>
+    </div>
+  </section>
+</Base>

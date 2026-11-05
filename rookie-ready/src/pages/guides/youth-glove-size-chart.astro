@@ -1,0 +1,152 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+import { GLOVE_CHART_ROWS, MITT_CHART_ROWS, rangeLabel } from '../../lib/sizing';
+
+const faqs = [
+  {
+    q: 'What size glove does an 8-year-old need?',
+    a: 'Most 7–8 year olds use a 10½–11″ glove. Go toward the smaller end if it’s their first season or they have small hands.',
+  },
+  {
+    q: 'What does RHT mean on a baseball glove?',
+    a: 'RHT stands for Right-Hand Throw. It’s for players who throw with their right hand, so the glove is worn on the <strong>left</strong> hand. LHT (Left-Hand Throw) gloves are worn on the right hand.',
+  },
+  {
+    q: 'Should I buy a bigger glove so it lasts longer?',
+    a: 'No. An oversized glove is heavy and hard to close, so kids drop more balls and lose confidence. Buy the size that fits now. Kids usually need a new glove every one to two seasons anyway.',
+  },
+  {
+    q: 'Can a youth player use an adult glove?',
+    a: 'Adult gloves have wider finger slots and stiffer leather. For most kids under 12, a “youth pattern” glove fits and closes much better.',
+  },
+  {
+    q: 'Does my kid need a position-specific glove?',
+    a: 'Not until about age 10 or later. Young players rotate positions, so an all-around glove is best. Catchers (and regular first basemen, 9+) are the exceptions.',
+  },
+];
+
+const sources = [
+  { label: 'Rawlings: determine your glove size by age', href: 'https://www.rawlings.com/product/37GG.html' },
+  { label: 'Little League®: what to wear and bring to practice', href: 'https://www.littleleague.org/university/articles/get-the-gear-and-what-to-wear-for-little-league-practices/' },
+];
+---
+<GuideLayout
+  slug="youth-glove-size-chart"
+  metaTitle="Youth Baseball Glove Size Chart by Age & Position (RHT vs LHT)"
+  description="The right glove size for every age and position, from tee ball to high school, plus how to tell RHT from LHT and how a glove should fit."
+  faqs={faqs}
+  sources={sources}
+  related={['how-to-break-in-a-glove', 'youth-bat-size-chart', 'catchers-gear-for-kids']}
+>
+  <Fragment slot="answer">
+    <p>
+      <strong>Tee ball (4–6):</strong> 9–10½″. <strong>Ages 7–8:</strong> about 10½–11″. <strong>Ages 9–10:</strong> 11–11½″. <strong>Ages 11–12:</strong>
+      11¼–12″ depending on position. A kid who throws right-handed needs an <strong>RHT</strong> glove, which goes on the <strong>left</strong> hand.
+    </p>
+  </Fragment>
+
+  <h2 id="chart">Youth glove size chart by age and position</h2>
+  <p>
+    Gloves are measured from the tip of the index finger, down the inside of the glove, to the heel. Infielders use smaller gloves for quick transfers. Outfielders use
+    longer gloves to reach fly balls. Until about age 10, an “all-around” glove is the right pick.
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Age</th>
+          <th scope="col">All-around</th>
+          <th scope="col">Infield</th>
+          <th scope="col">Outfield</th>
+          <th scope="col">Pitcher</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          GLOVE_CHART_ROWS.map((r) => (
+            <tr>
+              <th scope="row">{r.ages}</th>
+              <td>
+                <strong>{rangeLabel(r.allaround)}</strong>
+              </td>
+              <td>{rangeLabel(r.infield)}</td>
+              <td>{rangeLabel(r.outfield)}</td>
+              <td>{rangeLabel(r.pitcher)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">Based on manufacturer age charts (Rawlings and others). Brands vary by a quarter inch or so.</p>
+
+  <h3 id="mitts">Catcher’s and first base mitts</h3>
+  <p>Catcher’s mitts are measured around the outside (circumference), so the numbers are much bigger. First base mitts are long and scoop-shaped.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Age</th><th scope="col">Catcher’s mitt</th><th scope="col">First base mitt</th></tr>
+      </thead>
+      <tbody>
+        {
+          MITT_CHART_ROWS.map((r) => (
+            <tr>
+              <th scope="row">{r.ages}</th>
+              <td>{rangeLabel(r.catcher)}</td>
+              <td>{r.firstbase ? rangeLabel(r.firstbase) : 'Use a regular glove'}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="hand">RHT vs LHT: which hand does the glove go on?</h2>
+  <div class="callout">
+    <p><strong>The glove goes on the hand they do NOT throw with.</strong></p>
+    <ul>
+      <li><strong>Throws right-handed → buy “RHT” (Right-Hand Throw).</strong> The glove goes on the left hand. This is about 9 out of 10 kids.</li>
+      <li><strong>Throws left-handed → buy “LHT” (Left-Hand Throw).</strong> The glove goes on the right hand.</li>
+    </ul>
+  </div>
+  <p>
+    Not sure which hand they throw with? Roll them a ball and say “throw it back!” Do it a few times. Young kids sometimes switch, but most settle on one hand quickly. Some
+    kids bat one way and throw the other, and that’s fine. For the glove, only the <em>throwing</em> hand matters.
+  </p>
+  <CoachTip>
+    <p>Lefty gloves are harder to find in stores, especially in small youth sizes. Shopping online gives you far more choices.</p>
+  </CoachTip>
+
+  <h2 id="fit">How a youth glove should fit</h2>
+  <ul>
+    <li><strong>One-hand squeeze:</strong> they can open and close it with just their glove hand. If they need two hands, it’s too big or too stiff.</li>
+    <li><strong>Fingers in the slots:</strong> no big empty space at the fingertips. (Older players often slide their index finger outside the glove; that’s normal.)</li>
+    <li><strong>Shake test:</strong> point the glove at the ground and shake. It should stay on. Snug up the wrist strap if it has one.</li>
+  </ul>
+
+  <h2 id="features">What to look for</h2>
+  <ul>
+    <li><strong>“Youth pattern” or “youth fit”:</strong> narrower finger slots and a smaller wrist opening.</li>
+    <li><strong>Soft out of the box:</strong> labels like “game ready” or “pre-broken-in.” Stiff, adult-grade leather can take weeks and frustrates young kids.</li>
+    <li><strong>Adjustable wrist strap:</strong> a Velcro strap helps the smallest hands.</li>
+    <li>
+      <strong>Web style:</strong> for beginners, any web works (a closed or basket web is a bit more forgiving). Pitchers want a closed web to hide their grip; infielders
+      like an I-web or H-web; outfielders like an H-web or trapeze.
+    </li>
+  </ul>
+
+  <h2 id="mistakes">Common glove mistakes</h2>
+  <ul>
+    <li>Buying big to “grow into” it. This is the #1 mistake.</li>
+    <li>Buying the wrong hand. RHT goes on the left hand.</li>
+    <li>Skipping the break-in. Even soft gloves need a week of catch. See <a href="/guides/how-to-break-in-a-glove/">how to break in a glove</a>.</li>
+  </ul>
+
+  <h2 id="shop">Shop youth gloves</h2>
+  <p>Searches are pre-filled for youth gloves. Pick the size from the chart above.</p>
+  <ShopButtons query="youth baseball glove right hand throw" what="RHT youth gloves" item="guide-glove-rht" />
+  <div style="height:.75rem"></div>
+  <ShopButtons query="youth baseball glove left hand throw" what="LHT (lefty) gloves" item="guide-glove-lht" />
+</GuideLayout>

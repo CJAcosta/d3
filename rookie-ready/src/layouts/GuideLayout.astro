@@ -1,0 +1,208 @@
+---
+import Base from './Base.astro';
+import Disclosure from '../components/Disclosure.astro';
+import Faq, { type FaqItem } from '../components/Faq.astro';
+import CtaBand from '../components/CtaBand.astro';
+import Icon from '../components/Icon.astro';
+import { site } from '../config/site';
+import { guideBySlug, guides } from '../data/guides';
+
+interface Props {
+  slug: string;
+  /** <title> text; defaults to the guide title. */
+  metaTitle?: string;
+  description: string;
+  faqs?: FaqItem[];
+  sources?: { label: string; href: string }[];
+  /** Set false on pages with no affiliate links. */
+  hasLinks?: boolean;
+  related?: string[];
+}
+
+const { slug, metaTitle, description, faqs = [], sources = [], hasLinks = true, related } = Astro.props;
+const meta = guideBySlug(slug);
+const url = new URL(meta.href, Astro.site).toString();
+const updated = site.rulesReviewed;
+const updatedText = new Date(`${updated}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+const relatedGuides = (related ?? guides.map((g) => g.slug))
+  .filter((s) => s !== slug)
+  .slice(0, 3)
+  .map(guideBySlug);
+
+const jsonLd: Record<string, unknown>[] = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: meta.title,
+    description,
+    url,
+    dateModified: updated,
+    author: { '@type': 'Organization', name: site.name, url: Astro.site?.toString() },
+    publisher: { '@type': 'Organization', name: site.name, logo: { '@type': 'ImageObject', url: new URL('/apple-touch-icon.png', Astro.site).toString() } },
+    image: new URL(site.ogImage, Astro.site).toString(),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: new URL('/', Astro.site).toString() },
+      { '@type': 'ListItem', position: 2, name: 'Guides', item: new URL('/guides/', Astro.site).toString() },
+      { '@type': 'ListItem', position: 3, name: meta.title, item: url },
+    ],
+  },
+];
+if (faqs.length) {
+  jsonLd.push({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a.replace(/<[^>]+>/g, '') } })),
+  });
+}
+---
+<Base title={metaTitle ?? meta.title} description={description} jsonLd={jsonLd} type="article">
+  <article class="guide">
+    <header class="guide-hero">
+      <div class="wrap-narrow">
+        <nav class="crumbs" aria-label="Breadcrumb">
+          <ol>
+            <li><a href="/">Home</a></li>
+            <li><a href="/guides/">Guides</a></li>
+            <li aria-current="page">{meta.title}</li>
+          </ol>
+        </nav>
+        <h1>{meta.title}</h1>
+        <p class="lead">{description}</p>
+        <p class="byline">
+          <Icon name="baseball" /> By the {site.name} team · Rules and sizes checked {updatedText}
+        </p>
+        {hasLinks && <Disclosure />}
+      </div>
+    </header>
+
+    <div class="wrap-narrow">
+      {
+        Astro.slots.has('answer') && (
+          <aside class="quick-answer">
+            <p class="qa-label">
+              <Icon name="whistle" /> The quick answer
+            </p>
+            <slot name="answer" />
+          </aside>
+        )
+      }
+
+      <div class="prose">
+        <slot />
+      </div>
+
+      <div style="margin:3rem 0">
+        <CtaBand track={`guide_${slug}`} />
+      </div>
+
+      {faqs.length > 0 && <Faq items={faqs} />}
+
+      {
+        sources.length > 0 && (
+          <section class="sources">
+            <h2>Sources</h2>
+            <p class="muted">Rules change. These are the official pages we checked. Your league’s current rulebook always wins.</p>
+            <ul>
+              {sources.map((s) => (
+                <li>
+                  <a href={s.href} rel="noopener" target="_blank">
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+
+      <section class="related">
+        <h2>Keep reading</h2>
+        <div class="grid grid-3">
+          {
+            relatedGuides.map((g) => (
+              <a class="card related-card" href={g.href}>
+                <Icon name={g.icon} />
+                <strong>{g.title}</strong>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+    </div>
+  </article>
+</Base>
+
+<style>
+  .guide-hero {
+    padding: clamp(2rem, 1.5rem + 3vw, 4rem) 0 1.5rem;
+    background: radial-gradient(40rem 20rem at 100% 0%, var(--grass-tint), transparent 70%);
+  }
+  .byline {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+    color: var(--ink-3);
+  }
+  .byline :global(.icon) {
+    width: 1.1rem;
+    height: 1.1rem;
+    color: var(--stitch);
+  }
+  .quick-answer {
+    margin: 1rem 0 2rem;
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--radius);
+    background: var(--card);
+    border: 2px solid var(--grass);
+    box-shadow: var(--shadow);
+  }
+  .quick-answer :global(p:last-child) {
+    margin-bottom: 0;
+  }
+  .qa-label {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+    font: 800 0.8rem/1 var(--font-display);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--grass-dark);
+  }
+  .qa-label :global(.icon) {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .sources {
+    margin-top: 3rem;
+  }
+  .sources ul {
+    padding-left: 1.2rem;
+  }
+  .related {
+    margin-top: 3rem;
+  }
+  .related-card {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    color: var(--ink);
+    text-decoration: none;
+    font-family: var(--font-display);
+    line-height: 1.3;
+  }
+  .related-card:hover {
+    color: var(--grass-dark);
+  }
+  .related-card :global(.icon) {
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    color: var(--grass);
+  }
+</style>

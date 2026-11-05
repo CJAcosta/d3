@@ -1,0 +1,33 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../config/site';
+import { amazonDisclosure } from '../config/affiliates';
+---
+<Base title="Affiliate Disclosure" description={`How ${site.name} makes money, and how we keep recommendations honest.`}>
+  <section class="section">
+    <div class="wrap-narrow prose">
+      <h1>Affiliate disclosure</h1>
+      <p class="lead">Short version: some links on this site are paid links. If you buy through them, we may earn a commission at no extra cost to you.</p>
+
+      <h2>How it works</h2>
+      <p>
+        {site.name} is free to use. To keep it that way, we participate in affiliate programs run by retailers and affiliate networks. When you click a shopping link on our
+        site (labeled “Shop at …” and marked as paid links) and make a purchase, the retailer may pay us a small commission. The price you pay is the same.
+      </p>
+      <p><strong>{amazonDisclosure}</strong></p>
+      <p>We may also earn commissions from other retailers we link to, such as DICK’S Sporting Goods, through their affiliate programs.</p>
+
+      <h2>How we keep it honest</h2>
+      <ul>
+        <li>Sizing advice is based on manufacturer charts and league rules, never on which store pays more.</li>
+        <li>Our shopping buttons search for the exact size and spec we recommend, so you see the right product, not just the most expensive one.</li>
+        <li>We regularly tell you to skip things, borrow things, or buy used. We’d rather you trust us than buy more.</li>
+        <li>We don’t accept payment for placement in our recommendations.</li>
+        <li>Prices and availability are set by the retailer and can change. Always check the product page before buying.</li>
+      </ul>
+
+      <h2>Questions?</h2>
+      <p>Email us at <a href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a>.</p>
+    </div>
+  </section>
+</Base>

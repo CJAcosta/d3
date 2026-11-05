@@ -1,0 +1,345 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import Disclosure from '../components/Disclosure.astro';
+import { site } from '../config/site';
+import '../styles/wizard.css';
+
+const ages = Array.from({ length: 15 }, (_, i) => i + 4);
+const feet = [3, 4, 5, 6];
+const inches = Array.from({ length: 12 }, (_, i) => i);
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: `${site.name} Gear Guide`,
+    applicationCategory: 'LifestyleApplication',
+    operatingSystem: 'Any',
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    description:
+      'A free, step-by-step tool that builds a personalized youth baseball gear list with bat, glove, helmet and cleat sizes from your child’s age, height, weight, throwing hand and league.',
+    url: new URL('/gear-guide/', Astro.site).toString(),
+  },
+];
+---
+<Base
+  title="Build Your Kid’s Baseball Gear List (Free Sizing Tool)"
+  description="Answer a few quick questions and get your child’s exact bat length and drop, glove size and hand, helmet size and cleat type, plus what to skip. Free, about 2 minutes."
+  jsonLd={jsonLd}
+>
+  <div class="wiz-page">
+    <div class="wrap">
+      <section id="wizard" class="wiz" aria-label="Gear guide questions">
+        <div class="wiz-main">
+          <div class="wiz-top no-print" hidden data-progress-wrap>
+            <div class="wiz-progress" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span data-progress></span>
+            </div>
+            <p class="wiz-count" data-count></p>
+          </div>
+
+          <form id="wiz-form" novalidate autocomplete="off">
+            <!-- 0. Intro -->
+            <fieldset class="step" data-step="intro">
+              <legend class="visually-hidden">Get started</legend>
+              <p class="eyebrow">Free gear guide · about 2 minutes</p>
+              <h1 class="q-big">Let’s get your rookie ready for their first season.</h1>
+              <div class="coach">
+                <span class="coach-avatar"><Icon name="whistle" /></span>
+                <div class="coach-bubble">
+                  <span class="coach-name">Coach</span>
+                  <p>
+                    Hi! I’ll walk you through this one question at a time and explain why each one matters. At the end you’ll have a gear list with every size
+                    filled in, what’s required, and what you can skip.
+                  </p>
+                </div>
+              </div>
+              <div class="field">
+                <label for="f-name">What’s your player’s first name or nickname? <span class="opt">Optional</span></label>
+                <input id="f-name" name="name" type="text" maxlength="24" placeholder="e.g. Sam" autocomplete="off" autocapitalize="words" spellcheck="false" />
+                <p class="hint">
+                  <Icon name="shield" /> Your answers stay on this device. We never send or store them.
+                </p>
+              </div>
+              <div class="wiz-nav">
+                <button type="button" class="btn btn-lg" data-next>Let’s go <Icon name="arrow" /></button>
+              </div>
+              <p class="resume no-print" hidden data-resume>
+                <button type="button" class="linkish" data-act="resume">Welcome back! Pick up where you left off →</button>
+              </p>
+            </fieldset>
+
+            <!-- 1. Age -->
+            <fieldset class="step" data-step="age" hidden>
+              <legend class="q">How old is <span data-who>your player</span>?</legend>
+              <p class="q-sub">Their age on the first day of the season is perfect.</p>
+              <div class="tiles tiles-age">
+                {
+                  ages.map((n) => (
+                    <label class="tile tile-num">
+                      <input type="radio" name="age" value={n} />
+                      <span>{n === 18 ? '18+' : n}</span>
+                    </label>
+                  ))
+                }
+              </div>
+              <div class="react" data-react="age" aria-live="polite"></div>
+              <details class="why">
+                <summary>Why we ask</summary>
+                <p>Age decides which division they play in, and that sets the rules for bats, cleats and protective gear. It also keeps the sizes realistic.</p>
+              </details>
+              <p class="error" data-error="age" hidden>Pick an age to keep going.</p>
+              <div class="wiz-nav">
+                <button type="button" class="btn btn-ghost" data-back><Icon name="back" /> Back</button>
+                <button type="button" class="btn" data-next>Next <Icon name="arrow" /></button>
+              </div>
+            </fieldset>
+
+            <!-- 2. Size -->
+            <fieldset class="step" data-step="size" hidden>
+              <legend class="q">How tall is <span data-who>your player</span>, and how much do they weigh?</legend>
+              <p class="q-sub">Height and weight are the best predictors of bat length and pants size.</p>
+              <div class="size-grid">
+                <div class="field">
+                  <span class="label" id="h-label">Height</span>
+                  <div class="inline-fields" role="group" aria-labelledby="h-label">
+                    <select name="feet" aria-label="Feet">
+                      <option value="">ft</option>
+                      {feet.map((f) => <option value={f}>{f} ft</option>)}
+                    </select>
+                    <select name="inches" aria-label="Inches">
+                      <option value="">in</option>
+                      {inches.map((i) => <option value={i}>{i} in</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div class="field">
+                  <label for="f-weight">Weight</label>
+                  <div class="with-unit">
+                    <input id="f-weight" name="weight" type="number" inputmode="numeric" min="25" max="300" placeholder="e.g. 60" />
+                    <span>lb</span>
+                  </div>
+                </div>
+              </div>
+              <label class="check">
+                <input type="checkbox" name="unsureSize" />
+                <span>I’m not sure. Use typical sizes for their age.</span>
+              </label>
+              <p class="error" data-error="size" hidden>Pick a height and enter a weight, or check “I’m not sure.”</p>
+              <div class="react" data-react="size" aria-live="polite"></div>
+              <aside class="coach coach-sm">
+                <span class="coach-avatar"><Icon name="ruler" /></span>
+                <div class="coach-bubble">
+                  <span class="coach-name">Coach’s tip</span>
+                  <p>Stand them against a wall in socks, lay a book flat on their head, and mark it. It takes 30 seconds and it’s more accurate than guessing.</p>
+                </div>
+              </aside>
+              <div class="wiz-nav">
+                <button type="button" class="btn btn-ghost" data-back><Icon name="back" /> Back</button>
+                <button type="button" class="btn" data-next>Next <Icon name="arrow" /></button>
+              </div>
+            </fieldset>
+
+            <!-- 3. Hands -->
+            <fieldset class="step" data-step="hands" hidden>
+              <legend class="q">Which hand does <span data-who>your player</span> throw with?</legend>
+              <p class="q-sub">This decides which glove to buy. It’s the most common mix-up in the store.</p>
+              <div class="tiles tiles-3">
+                <label class="tile"><input type="radio" name="throws" value="R" /><span class="tile-title">Right hand</span></label>
+                <label class="tile"><input type="radio" name="throws" value="L" /><span class="tile-title">Left hand</span></label>
+                <label class="tile"><input type="radio" name="throws" value="unsure" /><span class="tile-title">Not sure</span></label>
+              </div>
+              <div class="react" data-react="throws" aria-live="polite"></div>
+
+              <h2 class="q q-2" id="bats-q">Which side do they bat from?</h2>
+              <p class="q-sub">This tells us which side a jaw guard goes on.</p>
+              <div class="tiles tiles-4" role="radiogroup" aria-labelledby="bats-q">
+                <label class="tile"><input type="radio" name="bats" value="R" /><span class="tile-title">Righty</span></label>
+                <label class="tile"><input type="radio" name="bats" value="L" /><span class="tile-title">Lefty</span></label>
+                <label class="tile"><input type="radio" name="bats" value="S" /><span class="tile-title">Both</span></label>
+                <label class="tile"><input type="radio" name="bats" value="unsure" /><span class="tile-title">Not sure</span></label>
+              </div>
+              <div class="react" data-react="bats" aria-live="polite"></div>
+              <p class="error" data-error="hands" hidden>Pick an answer for both questions (“Not sure” is fine).</p>
+              <div class="wiz-nav">
+                <button type="button" class="btn btn-ghost" data-back><Icon name="back" /> Back</button>
+                <button type="button" class="btn" data-next>Next <Icon name="arrow" /></button>
+              </div>
+            </fieldset>
+
+            <!-- 4. Team -->
+            <fieldset class="step" data-step="team" hidden>
+              <legend class="q">What kind of team is <span data-who>your player</span> joining?</legend>
+              <p class="q-sub">Leagues only allow bats with a specific stamp, so this one matters.</p>
+              <div class="tiles tiles-list">
+                <label class="tile tile-wide">
+                  <input type="radio" name="team" value="teeball" />
+                  <span class="tile-title">Tee ball</span>
+                  <span class="tile-desc">Hitting off a tee. Usually ages 4–6.</span>
+                </label>
+                <label class="tile tile-wide">
+                  <input type="radio" name="team" value="rec" />
+                  <span class="tile-title">Little League or a local rec league</span>
+                  <span class="tile-desc">Town or park league, coach pitch or kid pitch. The most common choice.</span>
+                </label>
+                <label class="tile tile-wide">
+                  <input type="radio" name="team" value="travel" />
+                  <span class="tile-title">Travel or tournament team</span>
+                  <span class="tile-desc">Tryouts, weekend tournaments, often USSSA.</span>
+                </label>
+                <label class="tile tile-wide">
+                  <input type="radio" name="team" value="school" />
+                  <span class="tile-title">Middle or high school team</span>
+                  <span class="tile-desc">School-run team.</span>
+                </label>
+                <label class="tile tile-wide">
+                  <input type="radio" name="team" value="unsure" />
+                  <span class="tile-title">Not sure yet</span>
+                  <span class="tile-desc">We’ll plan for the most common rules and flag what to check.</span>
+                </label>
+              </div>
+              <div class="react" data-react="team" aria-live="polite"></div>
+              <p class="error" data-error="team" hidden>Pick one. “Not sure yet” is totally fine.</p>
+              <div class="wiz-nav">
+                <button type="button" class="btn btn-ghost" data-back><Icon name="back" /> Back</button>
+                <button type="button" class="btn" data-next>Next <Icon name="arrow" /></button>
+              </div>
+            </fieldset>
+
+            <!-- 5. Position -->
+            <fieldset class="step" data-step="position" hidden>
+              <legend class="q">Does <span data-who>your player</span> have a position yet?</legend>
+              <p class="q-sub">Position changes the glove, and catchers need extra gear.</p>
+              <div class="tiles tiles-list">
+                <label class="tile tile-wide">
+                  <input type="radio" name="position" value="unsure" />
+                  <span class="tile-title">Not yet / they’ll play everywhere</span>
+                  <span class="tile-desc">The most common answer for younger players.</span>
+                </label>
+                <label class="tile"><input type="radio" name="position" value="infield" /><span class="tile-title">Infield</span></label>
+                <label class="tile"><input type="radio" name="position" value="outfield" /><span class="tile-title">Outfield</span></label>
+                <label class="tile"><input type="radio" name="position" value="pitcher" /><span class="tile-title">Pitcher</span></label>
+                <label class="tile"><input type="radio" name="position" value="catcher" /><span class="tile-title">Catcher</span></label>
+                <label class="tile"><input type="radio" name="position" value="firstbase" /><span class="tile-title">First base</span></label>
+              </div>
+              <div class="react" data-react="position" aria-live="polite"></div>
+              <p class="error" data-error="position" hidden>Pick one. “Not yet” is the most common answer.</p>
+              <div class="wiz-nav">
+                <button type="button" class="btn btn-ghost" data-back><Icon name="back" /> Back</button>
+                <button type="button" class="btn" data-next>Next <Icon name="arrow" /></button>
+              </div>
+            </fieldset>
+
+            <!-- 6. Experience + budget -->
+            <fieldset class="step" data-step="budget" hidden>
+              <legend class="q">Is this <span data-whose>your player’s</span> first season?</legend>
+              <div class="tiles tiles-2">
+                <label class="tile"><input type="radio" name="experience" value="first" checked /><span class="tile-title">Yes, first season</span></label>
+                <label class="tile"><input type="radio" name="experience" value="returning" /><span class="tile-title">No, they’ve played before</span></label>
+              </div>
+              <div class="react" data-react="experience" aria-live="polite"></div>
+
+              <h2 class="q q-2" id="budget-q">How do you want to spend?</h2>
+              <div class="tiles tiles-list" role="radiogroup" aria-labelledby="budget-q">
+                <label class="tile tile-wide">
+                  <input type="radio" name="budget" value="lean" />
+                  <span class="tile-title">Keep it lean</span>
+                  <span class="tile-desc">They’re just trying it out. Safe, fits right, nothing fancy.</span>
+                </label>
+                <label class="tile tile-wide">
+                  <input type="radio" name="budget" value="balanced" checked />
+                  <span class="tile-title">Balanced</span>
+                  <span class="tile-desc">Good gear that lasts the season, and maybe the next.</span>
+                </label>
+                <label class="tile tile-wide">
+                  <input type="radio" name="budget" value="allin" />
+                  <span class="tile-title">All in</span>
+                  <span class="tile-desc">They love it and you want gear that keeps up.</span>
+                </label>
+              </div>
+              <div class="react" data-react="budget" aria-live="polite"></div>
+              <div class="wiz-nav">
+                <button type="button" class="btn btn-ghost" data-back><Icon name="back" /> Back</button>
+                <button type="button" class="btn" data-next>Next <Icon name="arrow" /></button>
+              </div>
+            </fieldset>
+
+            <!-- 7. Extras -->
+            <fieldset class="step" data-step="extras" hidden>
+              <legend class="q">Last step! What’s already covered?</legend>
+              <p class="q-sub">Check anything you already have that still fits, or that the team provides. We’ll leave it off the shopping list.</p>
+              <div class="tiles tiles-3 tiles-check">
+                <label class="tile"><input type="checkbox" name="have" value="glove" /><span class="tile-title">Glove</span></label>
+                <label class="tile"><input type="checkbox" name="have" value="bat" /><span class="tile-title">Bat</span></label>
+                <label class="tile"><input type="checkbox" name="have" value="helmet" /><span class="tile-title">Helmet</span></label>
+                <label class="tile"><input type="checkbox" name="have" value="cleats" /><span class="tile-title">Cleats</span></label>
+                <label class="tile"><input type="checkbox" name="have" value="pants" /><span class="tile-title">Pants</span></label>
+                <label class="tile" data-catcher-only hidden><input type="checkbox" name="have" value="catcher" /><span class="tile-title">Catcher’s gear</span></label>
+              </div>
+
+              <h2 class="q q-2" id="prot-q">Protective gear: which should we include?</h2>
+              <p class="q-sub">Boys usually wear a cup. Little League requires one for catchers.</p>
+              <div class="tiles tiles-3" role="radiogroup" aria-labelledby="prot-q">
+                <label class="tile"><input type="radio" name="protection" value="cup" /><span class="tile-title">Athletic cup</span><span class="tile-desc">For boys</span></label>
+                <label class="tile"><input type="radio" name="protection" value="pelvic" /><span class="tile-title">Pelvic protector</span><span class="tile-desc">For girls (optional)</span></label>
+                <label class="tile"><input type="radio" name="protection" value="skip" /><span class="tile-title">Skip this</span></label>
+              </div>
+              <p class="error" data-error="extras" hidden>Pick one of the protective gear options (“Skip this” is fine).</p>
+
+              <details class="extra-credit">
+                <summary><Icon name="ruler" /> Extra credit: got a tape measure? <span class="opt">Optional</span></summary>
+                <div class="size-grid">
+                  <div class="field">
+                    <label for="f-head">Head size (around)</label>
+                    <div class="with-unit">
+                      <input id="f-head" name="head" type="number" inputmode="decimal" min="16" max="26" step="0.125" placeholder="e.g. 20.5" />
+                      <span>in</span>
+                    </div>
+                    <p class="hint">Measure about an inch above the eyebrows, around the widest part of the head. A string and a ruler work too. (cm ÷ 2.54 = inches)</p>
+                  </div>
+                  <div class="field">
+                    <label for="f-shoe">Sneaker size</label>
+                    <input id="f-shoe" name="shoe" type="text" maxlength="6" placeholder="e.g. 2Y or 13C" />
+                    <p class="hint">Cleats run the same as sneakers.</p>
+                  </div>
+                </div>
+              </details>
+              <div class="wiz-nav">
+                <button type="button" class="btn btn-ghost" data-back><Icon name="back" /> Back</button>
+                <button type="button" class="btn btn-lg btn-red" data-next data-finish>Build my gear plan <Icon name="arrow" /></button>
+              </div>
+            </fieldset>
+          </form>
+        </div>
+
+        <aside class="preview no-print" aria-label="Sizes so far" hidden data-preview>
+          <div class="preview-card">
+            <p class="preview-title"><Icon name="baseball" /> <span><span data-whose-cap>Your player’s</span> sizes so far</span></p>
+            <ul class="preview-list" data-preview-list></ul>
+            <p class="preview-foot">Updates as you answer. Full details and shopping links at the end.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section id="results" class="results" hidden aria-label="Your gear plan"></section>
+
+      <template id="tpl-disclosure"><Disclosure /></template>
+
+      <noscript>
+        <div class="card" style="margin-top:2rem">
+          <h2>This guide needs JavaScript</h2>
+          <p>
+            You can still find every size in our guides: the <a href="/guides/youth-bat-size-chart/">bat size chart</a>,
+            <a href="/guides/youth-glove-size-chart/">glove size chart</a> and the <a href="/guides/youth-baseball-gear-checklist/">full first-season checklist</a>.
+          </p>
+        </div>
+      </noscript>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { initWizard } from '../scripts/wizard';
+  initWizard();
+</script>

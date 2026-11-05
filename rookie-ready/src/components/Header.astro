@@ -1,0 +1,16 @@
+---
+import Logo from './Logo.astro';
+const path = Astro.url.pathname;
+const current = (p: string) => (path === p || (p !== '/' && path.startsWith(p)) ? 'page' : undefined);
+---
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <Logo />
+    <nav class="nav" aria-label="Main">
+      <a href="/guides/" class="nav-hide-sm" aria-current={current('/guides/')}>Guides</a>
+      <a href="/about/" class="nav-hide-sm" aria-current={current('/about/')}>About</a>
+      <a href="/gear-guide/" class="btn" data-track="nav_cta">Build my gear list</a>
+    </nav>
+  </div>
+</header>

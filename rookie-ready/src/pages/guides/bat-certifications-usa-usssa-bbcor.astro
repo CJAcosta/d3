@@ -1,0 +1,136 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+
+const faqs = [
+  {
+    q: 'Can my kid use a USSSA bat in Little League?',
+    a: 'No. Little League requires the USA Baseball mark on non-wood bats in the Majors division and below. A USSSA (1.15 BPF) bat isn’t legal there, even in the same size.',
+  },
+  {
+    q: 'My kid plays rec AND travel. Which bat should I buy?',
+    a: 'Ask the travel coach which rules their tournaments use. If they play USSSA events, many families end up with two bats: a USA Baseball bat for rec and a USSSA bat for travel. If you can only buy one, buy the one for the league that plays the most games.',
+  },
+  {
+    q: 'Are wood bats allowed in Little League?',
+    a: 'Yes. Solid one-piece wood bats don’t need the USA Baseball mark in Little League. They’re heavier, though, so most young players do better with a light non-wood bat.',
+  },
+  {
+    q: 'Is a used bat okay?',
+    a: 'Often, yes, as long as the certification stamp is legible and correct for your league, and the bat has no cracks, dents or rattles. Leagues can remove bats with illegible marks.',
+  },
+  {
+    q: 'What is changing with BBCOR?',
+    a: 'In 2026, Little League noted that USA Baseball will oversee testing and certification of a renamed “USA BBCOR” standard. Little League says there’s no impact on its 2026 or 2027 seasons. Check with your league for later seasons.',
+  },
+];
+
+const sources = [
+  { label: 'Little League® bat rules by division (updated July 7, 2026)', href: 'https://www.littleleague.org/playing-rules-/bat-rules' },
+  { label: 'Little League® USA Baseball bat standard FAQs', href: 'https://www.littleleague.org/playing-rules/bat-information/usa-baseball-bat-standard-faq/' },
+];
+---
+<GuideLayout
+  slug="bat-certifications-usa-usssa-bbcor"
+  metaTitle="USA vs USSSA vs BBCOR Bats: Which Does My Kid Need?"
+  description="The certification stamp on a bat decides where it’s legal. Here’s what USA Baseball, USSSA and BBCOR mean, and which one your league requires."
+  faqs={faqs}
+  sources={sources}
+  related={['youth-bat-size-chart', 'youth-baseball-gear-checklist', 'tee-ball-gear']}
+>
+  <Fragment slot="answer">
+    <p>
+      <strong>Little League and most rec leagues → USA Baseball.</strong> <strong>Most travel/tournament teams → USSSA</strong> (ask the coach).
+      <strong>High school → BBCOR</strong> (−3). Tee ball has its own USA Baseball tee ball bats. Look for the stamp printed on the bat’s barrel or taper before you buy.
+    </p>
+  </Fragment>
+
+  <h2 id="compare">The three stamps at a glance</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Stamp</th><th scope="col">Who uses it</th><th scope="col">Typical drops</th><th scope="col">Barrel</th><th scope="col">How it hits</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th scope="row">USA Baseball</th>
+          <td>Little League, most rec leagues, Babe Ruth/Cal Ripken, many others (roughly ages 5–14)</td>
+          <td>Commonly −13 to −5</td>
+          <td>Up to 2⅝″</td>
+          <td>Plays close to wood. The safest choice for rec ball.</td>
+        </tr>
+        <tr>
+          <th scope="row">USSSA (1.15 BPF)</th>
+          <td>Most travel and tournament baseball (roughly ages 7–14)</td>
+          <td>Commonly −12 to −5</td>
+          <td>Up to 2¾″</td>
+          <td>Hotter, livelier. Not legal in Little League.</td>
+        </tr>
+        <tr>
+          <th scope="row">BBCOR (.50)</th>
+          <td>High school, college, Little League Senior division</td>
+          <td>Always −3</td>
+          <td>Up to 2⅝″</td>
+          <td>Heavier and closer to wood.</td>
+        </tr>
+        <tr>
+          <th scope="row">USA tee ball</th>
+          <td>Tee ball</td>
+          <td>Usually −10 to −13</td>
+          <td>Up to 2⅝″</td>
+          <td>Light, 26″ or shorter, only for soft tee balls</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="little-league">Little League bat rules by division</h2>
+  <p>Straight from Little League’s official bat rules (non-wood bats):</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Division</th><th scope="col">Max length</th><th scope="col">Max barrel</th><th scope="col">Required mark</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Tee Ball</th><td>26″</td><td>2⅝″</td><td>USA Baseball + “Only for use with approved tee balls”</td></tr>
+        <tr><th scope="row">Minor / Major</th><td>33″</td><td>2⅝″</td><td>USA Baseball</td></tr>
+        <tr><th scope="row">Intermediate (50/70)</th><td>34″</td><td>2⅝″</td><td>USA Baseball or BBCOR</td></tr>
+        <tr><th scope="row">Junior League</th><td>34″</td><td>2⅝″</td><td>USA Baseball or BBCOR</td></tr>
+        <tr><th scope="row">Senior League</th><td>36″</td><td>2⅝″</td><td>BBCOR (drop no more than −3)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Little League also bans batting donuts and add-on choke-up rings or knobs, and requires the bat to pass through the bat ring for its labeled barrel size. Approved tee
+    ball bats can be used in coach-pitch and machine-pitch divisions, but only with approved tee balls.
+  </p>
+
+  <h2 id="find-stamp">How to find the stamp on a bat</h2>
+  <ul>
+    <li>Look on the <strong>taper</strong> (where the handle widens into the barrel) or the barrel itself.</li>
+    <li><strong>USA Baseball:</strong> a logo with “USA Baseball” and usually “USABat.”</li>
+    <li><strong>USSSA:</strong> a “USSSA Baseball 1.15 BPF” thumbprint-style mark.</li>
+    <li><strong>BBCOR:</strong> a rectangular “BBCOR Certified .50” mark.</li>
+    <li>Online, the stamp is almost always in the product title (for example, “USA Baseball Bat −11”). If it isn’t, skip it.</li>
+  </ul>
+  <CoachTip>
+    <p>
+      If you’re not sure which rules your league uses, text the coach before buying. Most stores won’t take a bat back once it’s been hit with, and a wrong-stamp bat is
+      the most common gear mistake we see.
+    </p>
+  </CoachTip>
+
+  <h2 id="travel">Playing travel ball?</h2>
+  <p>
+    Many travel teams play USSSA tournaments, but some events run under USA Baseball rules, and teams often switch to BBCOR or −5 bats at 13U–14U to prepare for high
+    school. Ask the coach two questions: <em>“Which stamp?”</em> and <em>“Is there a drop limit for our age group?”</em>
+  </p>
+
+  <h2 id="shop">Shop by stamp</h2>
+  <ShopButtons query="USA Baseball youth bat" what="USA Baseball bats" item="guide-cert-usa" />
+  <div style="height:.75rem"></div>
+  <ShopButtons query="USSSA youth baseball bat" what="USSSA bats" item="guide-cert-usssa" />
+  <div style="height:.75rem"></div>
+  <ShopButtons query="BBCOR bat" what="BBCOR bats" item="guide-cert-bbcor" />
+</GuideLayout>

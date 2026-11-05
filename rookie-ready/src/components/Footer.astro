@@ -1,0 +1,46 @@
+---
+import { site } from '../config/site';
+import { amazonDisclosure } from '../config/affiliates';
+import Logo from './Logo.astro';
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <Logo />
+        <p style="margin-top:1rem">{site.tagline} A free, step-by-step guide for parents of first-time players.</p>
+        <p class="muted" style="color:#9aa6b8">
+          We earn a commission when you buy through some links on this site, at no extra cost to you. It never changes what we recommend.{' '}
+          {amazonDisclosure}{' '}<a href="/disclosure/">How we make money</a>.
+        </p>
+      </div>
+      <div>
+        <h2>Sizing guides</h2>
+        <ul>
+          <li><a href="/guides/youth-bat-size-chart/">Bat size chart</a></li>
+          <li><a href="/guides/youth-glove-size-chart/">Glove size chart</a></li>
+          <li><a href="/guides/batting-helmet-size-guide/">Helmet sizing</a></li>
+          <li><a href="/guides/youth-baseball-cleats/">Cleats</a></li>
+          <li><a href="/guides/bat-certifications-usa-usssa-bbcor/">USA vs USSSA vs BBCOR</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>{site.name}</h2>
+        <ul>
+          <li><a href="/gear-guide/">Build my gear list</a></li>
+          <li><a href="/guides/youth-baseball-gear-checklist/">First-season checklist</a></li>
+          <li><a href="/about/">About us</a></li>
+          <li><a href="/disclosure/">Affiliate disclosure</a></li>
+          <li><a href="/privacy/">Privacy</a></li>
+          <li><a href="/terms/">Terms</a></li>
+          <li><a href={`mailto:${site.contactEmail}`}>Contact</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="fine">
+      © {year} {site.owner}. Sizing charts are general guidance. Always confirm your league’s current rules and each maker’s size chart before buying.
+      We’re not affiliated with Little League®, USA Baseball, USSSA or any retailer named on this site.
+    </p>
+  </div>
+</footer>

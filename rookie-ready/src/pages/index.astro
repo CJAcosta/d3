@@ -1,0 +1,553 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import Faq from '../components/Faq.astro';
+import CtaBand from '../components/CtaBand.astro';
+import { site } from '../config/site';
+import { guides } from '../data/guides';
+
+const faqs = [
+  {
+    q: 'What baseball gear does my kid actually need for the first season?',
+    a: 'For most first-year players: a glove that fits, a batting helmet, a bat with the right league stamp, cleats, baseball pants, a water bottle, and (for boys) a cup. Many teams provide helmets and sometimes bats, so ask the coach before you buy. Our <a href="/gear-guide/">gear guide</a> builds the exact list for your player.',
+  },
+  {
+    q: 'How much does youth baseball gear cost?',
+    a: 'Most families spend roughly $100–$400 on a first season, depending on age, league rules and whether you buy new or used. Tee ball can be done for well under $150. Our plan shows a budget estimate for your choices and leaves out anything you already have.',
+  },
+  {
+    q: 'What size bat should my child use?',
+    a: 'Bat length depends mostly on height and weight, and the bat must carry the stamp your league requires (USA Baseball for Little League and most rec leagues). See our <a href="/guides/youth-bat-size-chart/">bat size chart</a>, or let the <a href="/gear-guide/">gear guide</a> do the math.',
+  },
+  {
+    q: 'What does RHT mean on a glove?',
+    a: 'RHT means Right-Hand Throw. It’s for kids who throw with their right hand, and the glove goes on their <strong>left</strong> hand. LHT (Left-Hand Throw) gloves go on the right hand.',
+  },
+  {
+    q: 'Is this really free? How do you make money?',
+    a: 'Yes, it’s free. Some shopping links are affiliate links: if you buy, the store pays us a small commission at no extra cost to you. We recommend sizes and gear the same way either way, and we’ll often tell you to skip things. <a href="/disclosure/">Full disclosure</a>.',
+  },
+  {
+    q: 'Do you store my child’s information?',
+    a: 'No. Your answers stay in your browser on your device. We don’t have accounts and we never receive your child’s name, age or measurements. <a href="/privacy/">Privacy policy</a>.',
+  },
+];
+
+const mistakes = [
+  {
+    icon: 'bat',
+    title: 'Buying a bat your league won’t allow',
+    text: 'Bats need a specific certification stamp. A USSSA bat isn’t legal in Little League, even if it’s the perfect size, and used bats usually can’t be returned.',
+  },
+  {
+    icon: 'glove',
+    title: 'A glove that’s too big (or for the wrong hand)',
+    text: 'If your kid can’t squeeze it shut with one hand, they can’t catch with it. And an “RHT” glove goes on the left hand, which surprises a lot of parents.',
+  },
+  {
+    icon: 'helmet',
+    title: 'Buying things the team already provides',
+    text: 'Helmets, catcher’s gear and even bats are often handed out. One text to the coach can save you $50–$150.',
+  },
+];
+
+const stages = [
+  { title: 'Tee ball', ages: 'Ages 4–6', items: ['Glove (9–10½″)', 'Batting helmet', 'Tee ball bat (24–26″)', 'Sneakers or molded cleats', 'Water bottle'] },
+  { title: 'Coach pitch', ages: 'Ages 6–8', items: ['Glove (10½–11″)', 'Helmet with face guard', 'USA Baseball bat (26–29″)', 'Molded cleats', 'Pants, belt & socks', 'Cup (boys)'] },
+  { title: 'Kid pitch', ages: 'Ages 9–12', items: ['Glove for their position (11–12¼″)', 'Helmet with face guard', 'USA or USSSA bat (28–32″)', 'Molded cleats', 'Pants, belt & socks', 'Cup + sliding shorts'] },
+  { title: 'Teen & high school', ages: 'Ages 13+', items: ['Position glove (11¼–12¾″)', 'Helmet', 'BBCOR bat (−3) for high school', 'Molded or metal cleats', 'Uniform pieces', 'Cup + sliding shorts'] },
+];
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: site.name,
+    url: Astro.site?.toString(),
+    description: site.description,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: site.name,
+    url: Astro.site?.toString(),
+    logo: new URL('/apple-touch-icon.png', Astro.site).toString(),
+    email: site.contactEmail,
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a.replace(/<[^>]+>/g, '') },
+    })),
+  },
+];
+---
+<Base title={site.name} description={site.description} jsonLd={jsonLd}>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">For parents of first-time ballplayers</p>
+        <h1>Your kid’s first baseball season, geared up right.</h1>
+        <p class="lead">
+          Tell us their age, height and throwing hand. We’ll walk you through every piece of gear: the exact sizes, what your league requires, and what you can skip.
+        </p>
+        <div class="hero-ctas">
+          <a class="btn btn-lg btn-red" href="/gear-guide/" data-track="hero_cta">Build my gear list, free <Icon name="arrow" /></a>
+          <a class="btn btn-lg btn-ghost" href="/guides/youth-baseball-gear-checklist/">See the checklist</a>
+        </div>
+        <ul class="trust">
+          <li><Icon name="check" /> Sized to your kid</li>
+          <li><Icon name="check" /> Checked against league rules</li>
+          <li><Icon name="check" /> No sign-up. Answers stay on your device</li>
+        </ul>
+      </div>
+
+      <div class="hero-visual" aria-hidden="true">
+        <div class="mock">
+          <div class="mock-head">
+            <span class="mock-dot"></span>
+            <p><strong>Sam’s size cheat sheet</strong><br /><span>Age 8 · 4′2″ · Throws right · Little League</span></p>
+          </div>
+          <ul class="mock-list">
+            <li><Icon name="bat" /><span>Bat</span><strong>27–28″ · −11 · USA</strong></li>
+            <li><Icon name="glove" /><span>Glove</span><strong>10¾″ RHT</strong></li>
+            <li><Icon name="helmet" /><span>Helmet</span><strong>Junior · hat 6½</strong></li>
+            <li><Icon name="cleat" /><span>Cleats</span><strong>Molded only</strong></li>
+            <li><Icon name="pants" /><span>Pants</span><strong>Youth S ×2</strong></li>
+          </ul>
+          <div class="mock-coach">
+            <Icon name="whistle" />
+            <p>RHT gloves go on the <strong>left</strong> hand. It’s the #1 mix-up in the store!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <p class="eyebrow">Avoid the classic mistakes</p>
+      <h2>Three mistakes almost every new baseball parent makes</h2>
+      <p class="lead" style="max-width:44rem">They’re easy to make and annoying to undo. The gear guide catches all three for you.</p>
+      <div class="grid grid-3" style="margin-top:2rem">
+        {
+          mistakes.map((m) => (
+            <article class="card mistake">
+              <span class="mistake-icon"><Icon name={m.icon} /></span>
+              <h3>{m.title}</h3>
+              <p>{m.text}</p>
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section how">
+    <div class="wrap">
+      <p class="eyebrow">How it works</p>
+      <h2>Like having a coach walk you through the store</h2>
+      <ol class="how-steps">
+        <li>
+          <span class="how-num">1</span>
+          <h3>Answer 7 quick questions</h3>
+          <p>Age, height, throwing hand, league and position. Not sure about something? “Not sure” is always an option, and we’ll tell you how to find out.</p>
+        </li>
+        <li>
+          <span class="how-num">2</span>
+          <h3>Get every size, and why</h3>
+          <p>Bat length and drop, glove size and hand, helmet size, cleat type, all explained in plain English, with an at-home fit check for each.</p>
+        </li>
+        <li>
+          <span class="how-num">3</span>
+          <h3>Buy only what you need</h3>
+          <p>A prioritized list (must-have, recommended, skip it) plus a message to send the coach, a budget estimate and a bag-packing checklist.</p>
+        </li>
+      </ol>
+      <a class="btn btn-lg" href="/gear-guide/" data-track="how_cta">Start the gear guide <Icon name="arrow" /></a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <p class="eyebrow">At a glance</p>
+      <h2>What your rookie needs, by age</h2>
+      <p class="lead" style="max-width:44rem">The basics for each stage. Your exact sizes depend on height, weight and league, which is what the gear guide is for.</p>
+      <div class="stages">
+        {
+          stages.map((s) => (
+            <article class="card stage">
+              <p class="stage-ages">{s.ages}</p>
+              <h3>{s.title}</h3>
+              <ul>
+                {s.items.map((i) => (
+                  <li>
+                    <Icon name="check" />
+                    {i}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))
+        }
+      </div>
+      <p style="margin-top:1.5rem"><a href="/guides/youth-baseball-gear-checklist/">See the full first-season checklist →</a></p>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="wrap">
+      <p class="eyebrow">Learn the why</p>
+      <h2>Sizing guides for baseball parents</h2>
+      <div class="grid grid-3" style="margin-top:1.5rem">
+        {
+          guides.slice(0, 6).map((g) => (
+            <a class="card guide-card" href={g.href}>
+              <span class="guide-icon">
+                <Icon name={g.icon} />
+              </span>
+              <h3>{g.title}</h3>
+              <p>{g.blurb}</p>
+              <span class="guide-more">
+                Read the guide <Icon name="arrow" />
+              </span>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="section family">
+    <div class="wrap-narrow">
+      <div class="card family-card">
+        <Icon name="baseball" />
+        <div>
+          <h2>Built by a baseball family</h2>
+          <p>
+            {site.name} started as our kid’s idea: “What if there was a website that told parents exactly what to buy?” We’d been through the confusing
+            first-season shopping trip ourselves, so we built the guide we wished we’d had.
+          </p>
+          <a href="/about/">Read our story →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="wrap-narrow">
+      <Faq items={faqs} />
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="wrap-narrow">
+      <CtaBand track="home_bottom_cta" />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero {
+    overflow: hidden;
+    padding: clamp(2.5rem, 1.5rem + 5vw, 6rem) 0 clamp(2rem, 1rem + 3vw, 4rem);
+    background:
+      radial-gradient(50rem 26rem at 100% 0%, var(--grass-tint), transparent 65%),
+      radial-gradient(40rem 22rem at 0% 100%, var(--clay-tint), transparent 65%);
+  }
+  .hero-grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+  @media (min-width: 60rem) {
+    .hero-grid {
+      grid-template-columns: 1.15fr 1fr;
+    }
+  }
+  .hero h1 {
+    font-size: clamp(2.3rem, 1.5rem + 3.6vw, 3.9rem);
+  }
+  .hero-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1.75rem 0 1.5rem;
+  }
+  .trust {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    color: var(--ink-2);
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .trust li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .trust :global(.icon) {
+    width: 1.1rem;
+    height: 1.1rem;
+    color: var(--grass);
+  }
+
+  .hero-visual {
+    position: relative;
+  }
+  .hero-visual::before {
+    content: '';
+    position: absolute;
+    inset: 8% -4% -6% 10%;
+    border-radius: 32px;
+    background: var(--grass);
+    transform: rotate(3deg);
+    opacity: 0.12;
+  }
+  .mock {
+    position: relative;
+    padding: 1.5rem;
+    border-radius: 24px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow-lg);
+    transform: rotate(-1.2deg);
+  }
+  .mock-head {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 2px dashed var(--line);
+  }
+  .mock-head p {
+    margin: 0;
+    line-height: 1.35;
+  }
+  .mock-head strong {
+    font: 800 1.15rem/1.2 var(--font-display);
+  }
+  .mock-head span {
+    font-size: 0.85rem;
+    color: var(--ink-3);
+  }
+  .mock-dot {
+    flex: none;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: var(--stitch);
+    box-shadow: 0 0 0 5px var(--stitch-tint);
+  }
+  .mock-list {
+    list-style: none;
+    margin: 0.75rem 0;
+    padding: 0;
+  }
+  .mock-list li {
+    display: grid;
+    grid-template-columns: 1.75rem 4.5rem 1fr;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--paper-2);
+  }
+  .mock-list :global(.icon) {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--ink-2);
+  }
+  .mock-list span {
+    color: var(--ink-3);
+    font-weight: 600;
+  }
+  .mock-list strong {
+    font-family: var(--font-display);
+    text-align: right;
+  }
+  .mock-coach {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    border-radius: 14px;
+    background: var(--grass-tint);
+    font-size: 0.92rem;
+  }
+  .mock-coach p {
+    margin: 0;
+  }
+  .mock-coach :global(.icon) {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    color: var(--grass-dark);
+  }
+
+  .mistake-icon,
+  .guide-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 1rem;
+    border-radius: 14px;
+    background: var(--stitch-tint);
+    color: var(--stitch);
+  }
+  .mistake-icon :global(.icon),
+  .guide-icon :global(.icon) {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+  .mistake p {
+    color: var(--ink-2);
+    margin: 0;
+  }
+
+  .how {
+    background: var(--ink);
+    color: #fff;
+  }
+  .how h2,
+  .how h3 {
+    color: #fff;
+  }
+  .how .eyebrow {
+    color: #ff9a93;
+  }
+  .how-steps {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0 2.5rem;
+    display: grid;
+    gap: 1.25rem;
+  }
+  @media (min-width: 48rem) {
+    .how-steps {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  .how-steps li {
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    background: rgb(255 255 255 / 6%);
+    border: 1px solid rgb(255 255 255 / 10%);
+  }
+  .how-steps p {
+    color: #c4cddb;
+    margin: 0;
+  }
+  .how-num {
+    display: inline-grid;
+    place-items: center;
+    width: 2.4rem;
+    height: 2.4rem;
+    margin-bottom: 1rem;
+    border-radius: 50%;
+    background: var(--stitch);
+    font: 800 1.15rem/1 var(--font-display);
+  }
+
+  .stages {
+    display: grid;
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  @media (min-width: 40rem) {
+    .stages {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (min-width: 64rem) {
+    .stages {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  .stage-ages {
+    margin: 0 0 0.25rem;
+    font: 800 0.8rem/1 var(--font-display);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--clay);
+  }
+  .stage ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.45rem;
+  }
+  .stage li {
+    display: flex;
+    gap: 0.45rem;
+    align-items: flex-start;
+    font-size: 0.97rem;
+  }
+  .stage li :global(.icon) {
+    flex: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin-top: 0.25rem;
+    color: var(--grass);
+  }
+
+  .guide-card {
+    display: flex;
+    flex-direction: column;
+    color: var(--ink);
+    text-decoration: none;
+    transition:
+      transform 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .guide-card:hover {
+    color: var(--ink);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+  }
+  .guide-card .guide-icon {
+    background: var(--grass-tint);
+    color: var(--grass-dark);
+  }
+  .guide-card p {
+    color: var(--ink-2);
+    flex: 1;
+  }
+  .guide-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 700;
+    color: var(--grass-dark);
+  }
+  .guide-more :global(.icon) {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .family-card {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    background: var(--clay-tint);
+    border-color: #ecd5bf;
+  }
+  .family-card > :global(.icon) {
+    flex: none;
+    width: 3rem;
+    height: 3rem;
+    color: var(--stitch);
+  }
+  .family-card h2 {
+    font-size: 1.5rem;
+  }
+</style>

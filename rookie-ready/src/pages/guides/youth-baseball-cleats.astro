@@ -1,0 +1,79 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+
+const faqs = [
+  {
+    q: 'At what age can kids wear metal cleats?',
+    a: 'In Little League, metal spikes are allowed starting in the Intermediate (50/70), Junior and Senior divisions (roughly 13 and up). Majors and below must wear molded cleats; removable spikes are okay only if no metal is exposed when they’re removed. High school generally allows metal. Check your league.',
+  },
+  {
+    q: 'Can my kid wear soccer cleats for baseball?',
+    a: 'Molded soccer cleats are allowed in most youth leagues. The main difference: baseball cleats have a cleat at the very front of the toe for push-off, which soccer cleats don’t. They work fine for a first season.',
+  },
+  {
+    q: 'Does my tee ball player need cleats?',
+    a: 'No. Sneakers are fine for tee ball. Molded cleats help on wet grass and many kids love feeling like a “real” ballplayer, but they’re optional.',
+  },
+  {
+    q: 'Should I buy cleats a size up?',
+    a: 'No more than a half size. Too much room causes blisters and tripping. Leave about a thumb’s width at the toe.',
+  },
+];
+
+const sources = [
+  { label: 'Little League® help center: are cleats with metal spikes permitted? (Rule 1.11(h))', href: 'https://www.littleleague.org/help-center/are-cleats-with-metal-spikes-permitted/' },
+  { label: 'Little League®: what to wear to practice', href: 'https://www.littleleague.org/university/articles/get-the-gear-and-what-to-wear-for-little-league-practices/' },
+];
+---
+<GuideLayout
+  slug="youth-baseball-cleats"
+  metaTitle="Youth Baseball Cleats: Molded vs Metal, Sizing & What’s Allowed"
+  description="Which cleats your kid is allowed to wear, how much room to leave, whether soccer cleats work, and when metal spikes are allowed."
+  faqs={faqs}
+  sources={sources}
+  related={['youth-baseball-gear-checklist', 'tee-ball-gear', 'youth-bat-size-chart']}
+>
+  <Fragment slot="answer">
+    <p>
+      <strong>12 and under: molded (rubber) cleats only.</strong> Metal is allowed in Little League’s Intermediate, Junior and Senior divisions and in high school.
+      Buy their <strong>sneaker size</strong>, leave about a thumb’s width at the toe, and don’t size up more than a half size.
+    </p>
+  </Fragment>
+
+  <h2 id="types">Molded vs metal vs turf</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Type</th><th scope="col">Allowed for</th><th scope="col">Good for</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Molded (rubber/plastic)</th><td>Every age</td><td>Young players, grass and turf, comfort. The default for ages 4–12.</td></tr>
+        <tr><th scope="row">Metal spikes</th><td>Little League Intermediate/Junior/Senior, high school and up</td><td>Extra grip on dirt and grass for older players</td></tr>
+        <tr><th scope="row">Turf shoes</th><td>Every age</td><td>Practice, turf fields, coaches. Not ideal on wet grass.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="sizing">How to size cleats</h2>
+  <ul>
+    <li><strong>Start with their sneaker size.</strong> Kids’ sizes run 10C–13C (little kids), then 1Y–7Y (big kids).</li>
+    <li><strong>Thumb’s width at the toe</strong>, about half an inch.</li>
+    <li><strong>Try them with baseball socks</strong>, which are thicker than everyday socks.</li>
+    <li><strong>Shop in the afternoon.</strong> Feet swell during the day.</li>
+    <li><strong>Jog test:</strong> the heel shouldn’t slip.</li>
+  </ul>
+  <CoachTip>
+    <p>Have them wear new cleats around the yard for a few days before the first practice. Stiff new cleats plus a two-hour practice equals blisters.</p>
+  </CoachTip>
+
+  <h2 id="cut">Low, mid or high top?</h2>
+  <p>
+    It’s mostly comfort. <strong>Low</strong> cuts are lighter and the most popular. <strong>Mid</strong> cuts add a bit of ankle support, which some parents like for younger
+    kids. High tops are less common in youth sizes.
+  </p>
+
+  <h2 id="shop">Shop youth cleats</h2>
+  <ShopButtons query="youth molded baseball cleats" what="youth molded cleats" item="guide-cleats" />
+</GuideLayout>

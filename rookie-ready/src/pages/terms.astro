@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../config/site';
+/* Template only, not legal advice. */
+---
+<Base title="Terms of Use" description={`Terms of use for ${site.name}.`}>
+  <section class="section">
+    <div class="wrap-narrow prose">
+      <h1>Terms of use</h1>
+      <p class="muted">Last updated November 5, 2026</p>
+      <h2>General guidance, not a guarantee</h2>
+      <p>
+        {site.name} provides general sizing and gear information for youth baseball. Sizing charts are starting points; every child, brand and league is different. Always
+        check your league’s current rules, the manufacturer’s size chart and fit, and your coach’s guidance before buying or using equipment.
+      </p>
+      <h2>Safety</h2>
+      <p>
+        Protective equipment reduces but doesn’t eliminate the risk of injury. Follow the manufacturer’s instructions, inspect gear regularly, and replace damaged equipment.
+      </p>
+      <h2>Third-party sites</h2>
+      <p>We link to retailers and other sites we don’t control. Purchases are between you and the retailer, including prices, shipping, returns and warranties.</p>
+      <h2>Trademarks</h2>
+      <p>
+        Little League®, USA Baseball, USSSA, NOCSAE and brand names mentioned on this site belong to their owners. {site.name} isn’t affiliated with or endorsed by them.
+      </p>
+      <h2>Contact</h2>
+      <p>Email <a href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a>.</p>
+    </div>
+  </section>
+</Base>

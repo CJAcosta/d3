@@ -1,0 +1,74 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+
+const faqs = [
+  {
+    q: 'How long does it take to break in a youth glove?',
+    a: 'Soft “game-ready” youth gloves take a few days of catch. Stiffer leather gloves can take one to three weeks. Start as soon as you buy it.',
+  },
+  {
+    q: 'Should I microwave or bake a glove?',
+    a: 'No. Heat dries out and cracks leather, weakens the laces and can void the warranty. It’s the most common break-in myth.',
+  },
+  {
+    q: 'How much glove oil should I use?',
+    a: 'Very little: a thin layer rubbed in with a cloth, on the outside and the pocket. Too much oil makes a glove heavy and floppy. Use conditioner made for baseball gloves.',
+  },
+  {
+    q: 'How do I store a glove between games?',
+    a: 'With a ball in the pocket, fingers folded around it, and a wide rubber band or glove wrap holding it closed. Keep it out of a hot car and let it air dry if it gets wet.',
+  },
+];
+---
+<GuideLayout
+  slug="how-to-break-in-a-glove"
+  metaTitle="How to Break In a Youth Baseball Glove (Fast, Kid-Friendly Way)"
+  description="Get a new glove game-ready in about a week, without ovens, microwaves or myths. A simple day-by-day plan for parents and kids."
+  faqs={faqs}
+  related={['youth-glove-size-chart', 'youth-baseball-gear-checklist', 'tee-ball-gear']}
+>
+  <Fragment slot="answer">
+    <p>
+      <strong>Play catch.</strong> Ten to fifteen minutes a day is the best break-in there is. Add a <em>thin</em> layer of glove conditioner, work the glove open and closed
+      with your hands, and store it overnight with a ball in the pocket and a wrap around it. No ovens, no microwaves, no soaking.
+    </p>
+  </Fragment>
+
+  <h2 id="plan">A one-week break-in plan</h2>
+  <ol>
+    <li><strong>Day 1:</strong> Open and close the glove 50–100 times with your hands. Bend the pinky and thumb toward each other, the way it’s meant to close.</li>
+    <li><strong>Day 1:</strong> Rub a very thin layer of glove conditioner on the outside and in the pocket with a soft cloth. Wipe off any extra.</li>
+    <li><strong>Every night:</strong> Put a ball in the pocket, fold the glove around it, and wrap it with a glove wrap or a couple of wide rubber bands.</li>
+    <li><strong>Days 2–7:</strong> Play catch for 10–15 minutes. Have your kid squeeze the glove shut on every catch. This shapes the pocket for <em>their</em> hand.</li>
+    <li><strong>Bonus:</strong> Pound the pocket with a ball or a glove mallet while you watch TV.</li>
+  </ol>
+  <CoachTip>
+    <p>Have your kid do as much of the break-in as possible. Squeezing it shut a hundred times builds the hand strength they need to catch with it.</p>
+  </CoachTip>
+
+  <h2 id="dont">What not to do</h2>
+  <ul>
+    <li>Microwave, bake or blow-dry it. Heat cracks leather.</li>
+    <li>Soak it in water or drive over it.</li>
+    <li>Pour on oil. A little goes a long way.</li>
+    <li>Leave it in a hot car or on the dashboard.</li>
+  </ul>
+
+  <h2 id="ready">How to tell it’s ready</h2>
+  <ul>
+    <li>Your kid can squeeze it shut with one hand.</li>
+    <li>The pocket holds a ball without it popping out.</li>
+    <li>It stays open on its own when they hold it up, ready to catch.</li>
+  </ul>
+
+  <h2 id="buy-easy">The shortcut: buy a glove that’s soft to start</h2>
+  <p>
+    For kids under 10, look for gloves labeled “game ready,” “soft shell” or “pre-broken-in.” They need a few days of catch instead of weeks. See our
+    <a href="/guides/youth-glove-size-chart/">glove size chart</a> for what to look for.
+  </p>
+
+  <h2 id="shop">Shop break-in supplies</h2>
+  <ShopButtons query="baseball glove conditioner break in kit" what="glove care kits" item="guide-glovecare" />
+</GuideLayout>

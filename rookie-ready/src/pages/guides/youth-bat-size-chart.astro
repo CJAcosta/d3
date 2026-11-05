@@ -1,0 +1,171 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+import { AGE_BAT_RANGE, BAT_CHART, BAT_HEIGHT_LABELS, BAT_WEIGHT_LABELS } from '../../lib/sizing';
+
+const ageRows = [
+  { ages: '4–5 (tee ball)', len: AGE_BAT_RANGE[5], drop: '−10 to −13', type: 'USA Baseball tee ball bat' },
+  { ages: '6–7', len: [25, 28], drop: '−10 to −13', type: 'USA Baseball (or tee ball bat with tee balls)' },
+  { ages: '8', len: AGE_BAT_RANGE[8], drop: '−10 to −13', type: 'USA Baseball (rec) / USSSA (travel)' },
+  { ages: '9–10', len: [27, 30], drop: '−10 to −12', type: 'USA Baseball (rec) / USSSA (travel)' },
+  { ages: '11–12', len: [28, 32], drop: '−8 to −10', type: 'USA Baseball (rec) / USSSA (travel)' },
+  { ages: '13–14', len: [29, 33], drop: '−5 to −8, or BBCOR −3', type: 'USA, USSSA or BBCOR (check league)' },
+  { ages: '15+ (high school)', len: [30, 34], drop: '−3', type: 'BBCOR' },
+];
+
+const faqs = [
+  {
+    q: 'Should I buy a bat my kid can grow into?',
+    a: 'No. A bat that’s too long or heavy slows the swing and teaches bad habits. Buy the size that fits now. If your kid is between sizes, go shorter and lighter.',
+  },
+  {
+    q: 'Is a heavier bat better for power?',
+    a: 'Not for young players. Bat speed matters more than bat weight. A lighter bat they can swing fast and control will hit the ball harder than a heavy one they drag through the zone.',
+  },
+  {
+    q: 'What does −10 mean on a bat?',
+    a: 'It’s the “drop”: the bat’s length in inches minus its weight in ounces. A 28-inch bat with a −10 drop weighs 18 ounces. The bigger the number after the minus sign, the lighter the bat.',
+  },
+  {
+    q: 'Can my kid use a tee ball bat in coach pitch?',
+    a: 'Only with approved tee balls. Little League allows certified tee ball bats in coach and machine pitch divisions, but only with approved tee balls. Once kids face regular baseballs, they need a regular USA Baseball bat.',
+  },
+  {
+    q: 'How often do kids need a new bat?',
+    a: 'Usually every one to two seasons as they grow. A good sign it’s time: the bat feels easy to swing and passes the chest test with room to spare.',
+  },
+  {
+    q: 'Aluminum or composite?',
+    a: 'For most young players, one-piece aluminum (alloy) is the best value: durable, ready to use out of the wrapper, and fine in cold weather. Composite bats cost more, need a break-in period, and can crack in cold weather.',
+  },
+];
+
+const sources = [
+  { label: 'Little League® bat rules by division', href: 'https://www.littleleague.org/playing-rules-/bat-rules' },
+  { label: 'Little League® USA Baseball bat standard FAQs', href: 'https://www.littleleague.org/playing-rules/bat-information/usa-baseball-bat-standard-faq/' },
+  { label: 'Rawlings / Miken bat sizing guide', href: 'https://miken.rawlings.com/bat-sizing-guide.html' },
+];
+---
+<GuideLayout
+  slug="youth-bat-size-chart"
+  metaTitle="Youth Baseball Bat Size Chart by Height, Weight & Age"
+  description="Find the right bat length and drop for your kid using height and weight, plus three quick at-home tests to check if a bat is too long or too heavy."
+  faqs={faqs}
+  sources={sources}
+  related={['bat-certifications-usa-usssa-bbcor', 'youth-glove-size-chart', 'youth-baseball-gear-checklist']}
+>
+  <Fragment slot="answer">
+    <p>
+      Most <strong>7–8 year olds</strong> swing a 26–28″ bat, <strong>9–10 year olds</strong> a 28–30″, and <strong>11–12 year olds</strong> a 29–32″.
+      Younger kids want a light bat (a drop of −10 to −13). Most importantly, the bat must carry the <strong>certification stamp your league requires</strong>: USA
+      Baseball for Little League and most rec leagues.
+    </p>
+  </Fragment>
+
+  <h2 id="chart">Bat size chart by height and weight</h2>
+  <p>
+    Find your kid’s height across the top and weight down the side. Where they meet is the recommended bat length in inches. This is the standard chart most bat makers
+    and stores use.
+  </p>
+  <div class="table-wrap table-wide">
+    <table class="table-grid">
+      <caption class="visually-hidden">Recommended bat length in inches by player height and weight</caption>
+      <thead>
+        <tr>
+          <th scope="col">Weight (lb)</th>
+          {BAT_HEIGHT_LABELS.map((h) => <th scope="col">{h}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {
+          BAT_CHART.map((row, i) => (
+            <tr>
+              <th scope="row">{BAT_WEIGHT_LABELS[i]}</th>
+              {row.map((v) => <td>{v ?? ''}</td>)}
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <CoachTip>
+    <p>
+      This chart runs a little long for small kids. If the chart and your kid’s age disagree, go with the shorter length. Our <a href="/gear-guide/">gear guide</a>
+      does this check for you automatically.
+    </p>
+  </CoachTip>
+
+  <h2 id="by-age">Bat length and drop by age</h2>
+  <p>Don’t know their height offhand? These are typical ranges by age. Height and weight are still the better guide.</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Age</th><th scope="col">Typical length</th><th scope="col">Typical drop</th><th scope="col">Usually needs</th></tr>
+      </thead>
+      <tbody>
+        {
+          ageRows.map((r) => (
+            <tr>
+              <th scope="row">{r.ages}</th>
+              <td>{r.len[0]}–{r.len[1]}″</td>
+              <td>{r.drop}</td>
+              <td>{r.type}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="drop">What “drop” means (and which one to pick)</h2>
+  <p>
+    Drop is the bat’s <strong>length minus its weight</strong>. A 28″ bat that weighs 18 oz is a “−10.” The bigger the number after the minus sign, the lighter the bat
+    feels.
+  </p>
+  <ul>
+    <li><strong>−11 to −13:</strong> very light. Great for tee ball, coach pitch and first-year players.</li>
+    <li><strong>−10:</strong> the most common youth drop, typical for ages 8–11.</li>
+    <li><strong>−8 and −5:</strong> heavier “transition” bats for stronger 11–14 year olds heading toward high school.</li>
+    <li><strong>−3:</strong> BBCOR bats, required in high school.</li>
+  </ul>
+  <p>For a first season, pick the lighter end of the range. You can always go heavier next year.</p>
+
+  <h2 id="fit-tests">Three quick fit tests (do these in the store)</h2>
+  <ol>
+    <li>
+      <strong>The chest test.</strong> Put the knob of the bat in the center of their chest and point the barrel straight out to the side. If their fingertips can
+      reach the end of the barrel, the length is right.
+    </li>
+    <li><strong>The side test.</strong> Stand the bat next to their leg. The knob should come up to about the middle of their palm when their arm hangs straight down.</li>
+    <li>
+      <strong>The weight test.</strong> Have them hold the bat by the handle with one hand, arm straight out to the side, for about 20 seconds. If the bat dips or
+      their arm shakes, it’s too heavy.
+    </li>
+  </ol>
+
+  <h2 id="stamp">Before you buy: check the stamp</h2>
+  <p>
+    This is the most expensive mistake new baseball parents make. Leagues only allow bats with specific certification marks, and a bat with the wrong one isn’t
+    allowed, no matter how well it fits.
+  </p>
+  <ul>
+    <li><strong>Little League and most rec leagues:</strong> USA Baseball stamp. Max 33″ through the Majors division.</li>
+    <li><strong>Travel / tournament teams:</strong> usually USSSA (1.15 BPF). Ask the coach.</li>
+    <li><strong>High school:</strong> BBCOR (−3).</li>
+  </ul>
+  <p><a href="/guides/bat-certifications-usa-usssa-bbcor/">Read: USA vs USSSA vs BBCOR, explained →</a></p>
+
+  <h2 id="types">Aluminum, composite or hybrid?</h2>
+  <ul>
+    <li><strong>One-piece aluminum (alloy):</strong> durable, affordable, ready to hit right away and fine in cold weather. Best for most young players.</li>
+    <li><strong>Composite:</strong> lighter-feeling with less sting, but pricier. Needs a break-in period and can crack in the cold.</li>
+    <li><strong>Hybrid:</strong> alloy barrel with a composite handle. Less sting than aluminum at a middle price.</li>
+  </ul>
+
+  <h2 id="shop">Shop by stamp</h2>
+  <p>We’ve pre-filled these searches. Filter by the length from the chart, and double-check the stamp on the product page.</p>
+  <ShopButtons query="USA Baseball youth bat" what="USA Baseball bats" item="guide-bat-usa" />
+  <div style="height:.75rem"></div>
+  <ShopButtons query="USA Baseball tee ball bat" what="tee ball bats" item="guide-bat-teeball" />
+</GuideLayout>

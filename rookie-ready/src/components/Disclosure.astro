@@ -1,0 +1,15 @@
+---
+import { amazonDisclosure } from '../config/affiliates';
+import Icon from './Icon.astro';
+interface Props {
+  class?: string;
+}
+const { class: cls = '' } = Astro.props;
+---
+<p class={`disclosure ${cls}`}>
+  <Icon name="tag" />
+  <span>
+    <strong>Heads up:</strong> some links on this page are paid links. If you buy through them we may earn a small commission, at no extra cost to you. It never changes what we recommend.{' '}
+    {amazonDisclosure}{' '}<a href="/disclosure/">Learn more</a>
+  </span>
+</p>

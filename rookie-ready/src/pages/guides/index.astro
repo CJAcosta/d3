@@ -1,0 +1,62 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import CtaBand from '../../components/CtaBand.astro';
+import { guides } from '../../data/guides';
+---
+<Base title="Youth Baseball Gear Guides for Parents" description="Plain-English sizing guides for baseball parents: bat and glove size charts, helmet sizing, bat certifications, cleats, catcher’s gear and the full first-season checklist.">
+  <section class="section">
+    <div class="wrap">
+      <p class="eyebrow">Guides</p>
+      <h1>Baseball gear, explained for parents</h1>
+      <p class="lead" style="max-width:44rem">
+        Every chart and rule you need to buy the right gear the first time. Want it all worked out for your kid instead? The gear guide does the math.
+      </p>
+      <div class="grid grid-3" style="margin-top:2rem">
+        {
+          guides.map((g) => (
+            <a class="card hub-card" href={g.href}>
+              <span class="hub-icon"><Icon name={g.icon} /></span>
+              <h2>{g.title}</h2>
+              <p>{g.blurb}</p>
+            </a>
+          ))
+        }
+      </div>
+      <div style="margin-top:3rem"><CtaBand track="guides_hub" /></div>
+    </div>
+  </section>
+</Base>
+<style>
+  .hub-card {
+    color: var(--ink);
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .hub-card:hover {
+    color: var(--ink);
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+  }
+  .hub-card h2 {
+    font-size: 1.2rem;
+  }
+  .hub-card p {
+    color: var(--ink-2);
+    margin: 0;
+  }
+  .hub-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    margin-bottom: 1rem;
+    border-radius: 14px;
+    background: var(--grass-tint);
+    color: var(--grass-dark);
+  }
+  .hub-icon :global(.icon) {
+    width: 1.7rem;
+    height: 1.7rem;
+  }
+</style>

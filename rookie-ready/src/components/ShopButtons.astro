@@ -1,0 +1,33 @@
+---
+/** Spec-matched store buttons. Every link is marked as paid (rel=sponsored). */
+import { shopLinks, SPONSORED_REL } from '../lib/links';
+import Icon from './Icon.astro';
+interface Props {
+  query: string;
+  /** What the button shops for, e.g. "28-inch USA Baseball bats". */
+  what: string;
+  item?: string;
+}
+const { query, what, item = 'guide' } = Astro.props;
+const links = shopLinks(query);
+---
+{
+  links.length > 0 && (
+    <div class="shop-row">
+      {links.map((l, i) => (
+        <a
+          class={`shop-btn ${i > 0 ? 'alt' : ''}`}
+          href={l.href}
+          rel={SPONSORED_REL}
+          target="_blank"
+          data-aff={l.merchant}
+          data-item={item}
+        >
+          Shop {what} at {l.label}
+          <Icon name="external" />
+        </a>
+      ))}
+      <span class="paid-note">Paid links</span>
+    </div>
+  )
+}

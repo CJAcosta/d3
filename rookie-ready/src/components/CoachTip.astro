@@ -1,0 +1,14 @@
+---
+import Icon from './Icon.astro';
+interface Props {
+  title?: string;
+}
+const { title = 'Coach’s tip' } = Astro.props;
+---
+<aside class="coach">
+  <span class="coach-avatar"><Icon name="whistle" /></span>
+  <div class="coach-bubble">
+    <span class="coach-name">{title}</span>
+    <slot />
+  </div>
+</aside>

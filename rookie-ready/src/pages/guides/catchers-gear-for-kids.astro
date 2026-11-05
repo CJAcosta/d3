@@ -1,0 +1,110 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+import { CATCHERS_CHART, MITT_CHART_ROWS, rangeLabel } from '../../lib/sizing';
+
+const faqs = [
+  {
+    q: 'Does my kid need their own catcher’s gear?',
+    a: 'Not always. Most rec leagues have a team set. If it fits well (no gaps at the knees, chest protector reaching the belly button, helmet not sliding), it’s fine. Kids who catch often are safer and more comfortable in gear that fits them.',
+  },
+  {
+    q: 'Is a cup required for catchers?',
+    a: 'Yes, for boys. Little League requires catchers to wear a protective cup.',
+  },
+  {
+    q: 'Hockey-style or traditional catcher’s mask?',
+    a: 'Most youth catchers use a one-piece hockey-style helmet. It protects the whole head and stays on when they pop up. Traditional two-piece masks are lighter but need a separate helmet.',
+  },
+  {
+    q: 'What is a NOCSAE chest protector?',
+    a: 'It’s a chest protector certified to NOCSAE’s standard for reducing commotio cordis (a rare but dangerous heart injury from a blow to the chest). High school (NFHS) rules require it for catchers. It’s a smart choice at any age.',
+  },
+];
+
+const sources = [
+  { label: 'Little League®: what to wear and bring (catchers must wear a cup)', href: 'https://www.littleleague.org/university/articles/get-the-gear-and-what-to-wear-for-little-league-practices/' },
+  { label: 'NOCSAE standards', href: 'https://nocsae.org/' },
+];
+---
+<GuideLayout
+  slug="catchers-gear-for-kids"
+  metaTitle="Youth Catcher’s Gear Sizing Chart: What Young Catchers Need"
+  description="What a young catcher needs, how to measure for a chest protector and leg guards, which mitt size to buy, and when the team set is good enough."
+  faqs={faqs}
+  sources={sources}
+  related={['youth-glove-size-chart', 'batting-helmet-size-guide', 'youth-baseball-gear-checklist']}
+>
+  <Fragment slot="answer">
+    <p>
+      A catcher needs a <strong>helmet with face mask and throat guard</strong>, a <strong>chest protector</strong>, <strong>leg guards</strong>, a
+      <strong>catcher’s mitt</strong>, and (for boys) a <strong>cup</strong>. An age-sized boxed set is the best value: Ages 7–9, 9–12 or 12–16. Ask the coach first,
+      since many leagues provide a team set.
+    </p>
+  </Fragment>
+
+  <h2 id="what">What a catcher wears</h2>
+  <ul>
+    <li><strong>Catcher’s helmet:</strong> hockey-style with a face mask and a throat guard. Must have the NOCSAE stamp.</li>
+    <li><strong>Chest protector:</strong> covers from the collarbone to the belly button. Look for the NOCSAE chest-protector seal.</li>
+    <li><strong>Leg guards:</strong> cover the knee, shin and top of the foot.</li>
+    <li><strong>Catcher’s mitt:</strong> extra padding for catching pitch after pitch. Most leagues expect one once kids are pitching.</li>
+    <li><strong>Cup (boys):</strong> required for catchers in Little League.</li>
+  </ul>
+
+  <h2 id="sizing">Catcher’s gear size chart</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Set size</th><th scope="col">Chest protector</th><th scope="col">Leg guards</th></tr>
+      </thead>
+      <tbody>
+        {
+          CATCHERS_CHART.map((r) => (
+            <tr>
+              <th scope="row">{r.set}</th>
+              <td>{r.chest}</td>
+              <td>{r.legs}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">Approximate. Brands vary by about half an inch. When your kid falls between sizes, most makers suggest the longer size.</p>
+
+  <h3 id="measure">How to measure</h3>
+  <ul>
+    <li><strong>Chest protector:</strong> measure from the base of the throat (the dip between the collarbones) straight down to the belly button.</li>
+    <li><strong>Leg guards:</strong> have them sit with their knee bent, and measure from the middle of the kneecap to the top of the ankle.</li>
+    <li><strong>Helmet:</strong> the same head measurement as a batting helmet. See <a href="/guides/batting-helmet-size-guide/">helmet sizing</a>.</li>
+  </ul>
+
+  <h2 id="mitt">Catcher’s mitt sizes</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Age</th><th scope="col">Mitt size (circumference)</th></tr>
+      </thead>
+      <tbody>
+        {
+          MITT_CHART_ROWS.map((r) => (
+            <tr>
+              <th scope="row">{r.ages}</th>
+              <td>{rangeLabel(r.catcher)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <CoachTip>
+    <p>Catchers also need a regular fielding glove for innings when they’re not behind the plate, so don’t skip the glove on your list.</p>
+  </CoachTip>
+
+  <h2 id="shop">Shop catcher’s gear</h2>
+  <ShopButtons query="youth catchers gear set" what="youth catcher’s sets" item="guide-catcher-set" />
+  <div style="height:.75rem"></div>
+  <ShopButtons query="youth catchers mitt" what="youth catcher’s mitts" item="guide-catcher-mitt" />
+</GuideLayout>

@@ -1,0 +1,53 @@
+---
+import Base from '../layouts/Base.astro';
+import { site } from '../config/site';
+/* Template only, not legal advice. Have it reviewed before launch, especially if you add GA4, ads or an email list. */
+const updated = 'November 5, 2026';
+---
+<Base title="Privacy Policy" description={`How ${site.name} handles your information.`}>
+  <section class="section">
+    <div class="wrap-narrow prose">
+      <h1>Privacy policy</h1>
+      <p class="muted">Last updated {updated}</p>
+      <p class="lead">We built {site.name} to need as little information as possible. Here’s exactly what happens.</p>
+
+      <h2>The gear guide</h2>
+      <p>
+        Everything you enter in the gear guide (your player’s name, age, measurements and other answers) is processed <strong>in your browser</strong> and saved
+        <strong>only on your device</strong> (in your browser’s local storage) so you can come back to your plan. We never receive it. You can erase it at any time with the
+        “Start over” button or by clearing your browser data.
+      </p>
+      <p>
+        If you use “Share with family,” the link includes your answers (age, sizes and so on) so the recipient can see the same plan. It does <strong>not</strong> include
+        your player’s name.
+      </p>
+
+      <h2>Children’s privacy</h2>
+      <p>
+        {site.name} is written for parents and guardians, not for children. We don’t knowingly collect personal information from children, and the gear guide doesn’t send
+        any information to us.
+      </p>
+
+      <h2>Analytics</h2>
+      <p>
+        We may use privacy-friendly analytics to understand which pages are helpful (for example, page views and which guide steps people complete). This doesn’t include
+        your gear guide answers or anything that identifies you. [Update this section to name your analytics provider before launch.]
+      </p>
+
+      <h2>Affiliate links and retailer cookies</h2>
+      <p>
+        When you click a shopping link, you go to the retailer’s site. The retailer or affiliate network may set cookies to record that you came from us, so we can be paid a
+        commission. Their privacy policies apply on their sites.
+      </p>
+
+      <h2>Email (optional)</h2>
+      <p>
+        If you sign up for reminders, your email address is stored by our email provider and used only to send what you asked for. Every email has an unsubscribe link.
+        [Name your email provider here before launch.]
+      </p>
+
+      <h2>Contact</h2>
+      <p>Questions? Email <a href={`mailto:${site.contactEmail}`}>{site.contactEmail}</a>.</p>
+    </div>
+  </section>
+</Base>

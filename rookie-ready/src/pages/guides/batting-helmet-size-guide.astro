@@ -1,0 +1,117 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+import { HAT_CHART, frac } from '../../lib/sizing';
+
+const faqs = [
+  {
+    q: 'Does my kid need their own batting helmet?',
+    a: 'Many leagues keep team helmets in the dugout, but a shared helmet rarely fits every kid well, and a helmet that wobbles doesn’t protect properly. Your own helmet also means it’s always the right size and always clean.',
+  },
+  {
+    q: 'Does a batting helmet need a face guard?',
+    a: 'Some leagues require one and many don’t, but we recommend one for young players. A full face guard (cage) or a C-flap jaw guard protects against the pitches and foul tips that cause the worst youth injuries.',
+  },
+  {
+    q: 'Which side does a C-flap go on?',
+    a: 'The side facing the pitcher. Right-handed batters wear it on the left side (sold as “for right-handed batters”). Left-handed batters wear it on the right side.',
+  },
+  {
+    q: 'Can I put stickers on a batting helmet?',
+    a: 'Check the helmet maker’s instructions first. Some paints, solvents and stickers can weaken the shell and void the NOCSAE certification.',
+  },
+  {
+    q: 'When should a helmet be replaced?',
+    a: 'Right away if the shell is cracked or the padding is loose or crushed. Otherwise, when your kid outgrows it or the maker’s recommended life is up. Many helmets print a date inside.',
+  },
+];
+
+const sources = [
+  { label: 'Little League®: what to wear and bring (helmets must be NOCSAE approved)', href: 'https://www.littleleague.org/university/articles/get-the-gear-and-what-to-wear-for-little-league-practices/' },
+  { label: 'NOCSAE: National Operating Committee on Standards for Athletic Equipment', href: 'https://nocsae.org/' },
+];
+---
+<GuideLayout
+  slug="batting-helmet-size-guide"
+  metaTitle="Youth Batting Helmet Size Chart: How to Measure (and Pick a Face Guard)"
+  description="Measure your kid’s head in 30 seconds, convert it to a hat size, check the fit, and choose the right face guard or C-flap side."
+  faqs={faqs}
+  sources={sources}
+  related={['youth-baseball-gear-checklist', 'catchers-gear-for-kids', 'tee-ball-gear']}
+>
+  <Fragment slot="answer">
+    <p>
+      Wrap a soft tape measure (or a string) around your kid’s head about <strong>an inch above the eyebrows</strong>, at the widest part. Compare that number to the
+      helmet maker’s chart. Most kids 5–12 fit a <strong>Junior/youth</strong> helmet. Make sure it has the <strong>NOCSAE</strong> stamp, two ear flaps, and ideally a
+      face guard.
+    </p>
+  </Fragment>
+
+  <h2 id="measure">How to measure (30 seconds)</h2>
+  <ol>
+    <li>Use a soft tape measure. No tape? Use a string or phone charger cable, then lay it against a ruler.</li>
+    <li>Wrap it around the head about an inch above the eyebrows, just above the ears, around the widest part of the back of the head.</li>
+    <li>Keep it snug but not tight. Measure twice and use the larger number.</li>
+  </ol>
+
+  <h2 id="chart">Head size to hat size chart</h2>
+  <p>
+    Most helmet charts list both head circumference and fitted hat size. Hat size is just the circumference divided by about 3.14. Brands label their size ranges
+    differently, so use this to understand the numbers, then check the specific helmet’s chart.
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Head (inches)</th><th scope="col">Hat size</th><th scope="col">Usually fits</th></tr>
+      </thead>
+      <tbody>
+        {
+          HAT_CHART.map((r) => (
+            <tr>
+              <td>{frac(r.circ)}″</td>
+              <th scope="row">{frac(r.hat)}</th>
+              <td>{r.category}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="fit">The fit check</h2>
+  <ul>
+    <li><strong>Shake test:</strong> have them shake their head “yes” and “no.” The helmet should move with their head, not slide around.</li>
+    <li><strong>Brim:</strong> the front sits about one finger-width above the eyebrows.</li>
+    <li><strong>Ears:</strong> the ear holes line up with their ears.</li>
+    <li><strong>Vision:</strong> in their batting stance, they can see the pitcher without tipping the helmet back.</li>
+  </ul>
+  <CoachTip>
+    <p>Adjustable helmets (with a dial or sliding pads) are great for kids between sizes, and can stretch an extra season out of a helmet.</p>
+  </CoachTip>
+
+  <h2 id="requirements">What a youth helmet must have</h2>
+  <ul>
+    <li><strong>NOCSAE stamp.</strong> Little League requires NOCSAE-approved batting helmets. Look for the seal on the back of the shell.</li>
+    <li><strong>Two ear flaps.</strong> Youth leagues require double ear-flap helmets.</li>
+    <li><strong>Good condition.</strong> No cracks, no loose or crushed padding.</li>
+  </ul>
+
+  <h2 id="face-guard">Face guards and C-flaps</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">If your kid bats…</th><th scope="col">Get</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Right-handed</th><td>A full face guard, or a C-flap on the <strong>left</strong> side (“for right-handed batters”)</td></tr>
+        <tr><th scope="row">Left-handed</th><td>A full face guard, or a C-flap on the <strong>right</strong> side (“for left-handed batters”)</td></tr>
+        <tr><th scope="row">Both, or not sure yet</th><td>A full face guard. It covers both sides.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>For kids 8 and under we suggest a full face guard. Many youth helmets come with one already attached.</p>
+
+  <h2 id="shop">Shop helmets</h2>
+  <ShopButtons query="youth batting helmet with face guard" what="youth helmets with face guards" item="guide-helmet" />
+</GuideLayout>

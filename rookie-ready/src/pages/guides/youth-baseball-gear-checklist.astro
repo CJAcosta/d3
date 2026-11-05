@@ -1,0 +1,259 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+import Icon from '../../components/Icon.astro';
+
+type Need = 'Must' | 'Rec' | 'Opt' | 'Ask' | 'Skip' | '—';
+const stages = [
+  { name: 'Tee ball', ages: '4–6' },
+  { name: 'Coach pitch', ages: '6–8' },
+  { name: 'Kid pitch', ages: '9–12' },
+  { name: '13+ / HS', ages: '13–18' },
+];
+const rows: { item: string; href?: string; needs: Need[]; note?: string }[] = [
+  { item: 'Glove', href: '/guides/youth-glove-size-chart/', needs: ['Must', 'Must', 'Must', 'Must'] },
+  { item: 'Batting helmet', href: '/guides/batting-helmet-size-guide/', needs: ['Must', 'Must', 'Must', 'Must'], note: 'Teams often provide' },
+  { item: 'Face guard / C-flap', href: '/guides/batting-helmet-size-guide/', needs: ['Rec', 'Rec', 'Rec', 'Opt'] },
+  { item: 'Bat', href: '/guides/youth-bat-size-chart/', needs: ['Rec', 'Must', 'Must', 'Must'], note: 'Check the stamp' },
+  { item: 'Cleats', href: '/guides/youth-baseball-cleats/', needs: ['Opt', 'Must', 'Must', 'Must'] },
+  { item: 'Baseball pants (×2)', needs: ['Ask', 'Must', 'Must', 'Must'] },
+  { item: 'Belt & socks', needs: ['Opt', 'Rec', 'Rec', 'Rec'] },
+  { item: 'Cup + compression shorts (boys)', needs: ['Rec', 'Rec', 'Must', 'Must'], note: 'Required for catchers' },
+  { item: 'Water bottle', needs: ['Must', 'Must', 'Must', 'Must'] },
+  { item: 'Bat bag / backpack', needs: ['Opt', 'Rec', 'Rec', 'Rec'] },
+  { item: 'Batting gloves', needs: ['Skip', 'Opt', 'Opt', 'Rec'] },
+  { item: 'Sliding shorts', needs: ['Skip', 'Opt', 'Rec', 'Rec'] },
+  { item: 'Catcher’s gear (catchers only)', href: '/guides/catchers-gear-for-kids/', needs: ['—', 'Ask', 'Must', 'Must'], note: 'Teams often provide' },
+  { item: 'Batting tee + practice balls', needs: ['Rec', 'Rec', 'Opt', 'Opt'] },
+  { item: 'Glove conditioner', href: '/guides/how-to-break-in-a-glove/', needs: ['Opt', 'Opt', 'Opt', 'Opt'] },
+  { item: 'Sport sunglasses', needs: ['—', 'Opt', 'Opt', 'Opt'] },
+];
+const label: Record<Need, string> = { Must: 'Must', Rec: 'Rec’d', Opt: 'Optional', Ask: 'Ask', Skip: 'Skip', '—': '—' };
+const cls: Record<Need, string> = { Must: 'badge-must', Rec: 'badge-recommended', Opt: 'badge-nice', Ask: 'badge-covered', Skip: 'badge-nice', '—': '' };
+
+const printable = [
+  'Glove (fits, broken in, name on it)',
+  'Batting helmet with face guard',
+  'Bat with the right league stamp',
+  'Cleats (molded for 12 & under)',
+  'Baseball pants ×2, belt and socks',
+  'Cup + compression shorts (boys)',
+  'Water bottle (full)',
+  'Team hat',
+  'Bat bag or backpack',
+  'Sunscreen',
+  'A snack for after',
+];
+
+const faqs = [
+  {
+    q: 'What does a kid need for their first baseball practice?',
+    a: 'A glove, a water bottle, athletic clothes (baseball pants or sweatpants, not shorts), cleats or sneakers, and a hat. Bring a helmet and bat if your team doesn’t provide them. Boys should wear an athletic supporter or compression shorts.',
+  },
+  {
+    q: 'What does the team usually provide?',
+    a: 'Often: team jerseys and hats, batting helmets, a few team bats, catcher’s gear, baseballs and the field equipment. Sometimes pants. It varies a lot, so ask the coach before you shop.',
+  },
+  {
+    q: 'How much does it cost to gear up for youth baseball?',
+    a: 'Most families spend roughly $100–$400 for a first season. Tee ball can be well under $150. Bats are the biggest variable: a basic one-piece aluminum bat is a fraction of the price of a flagship composite.',
+  },
+  {
+    q: 'Is used gear okay?',
+    a: 'Yes, for bats (with a legal stamp and no cracks or dents), bags, catcher’s gear and pants. Buy gloves, helmets and cleats to fit your kid, new or gently used.',
+  },
+];
+
+const sources = [
+  { label: 'Little League®: get the gear, and what to wear for practices', href: 'https://www.littleleague.org/university/articles/get-the-gear-and-what-to-wear-for-little-league-practices/' },
+  { label: 'Little League® bat rules', href: 'https://www.littleleague.org/playing-rules-/bat-rules' },
+  { label: 'Little League® cleat rule (1.11(h))', href: 'https://www.littleleague.org/help-center/are-cleats-with-metal-spikes-permitted/' },
+];
+---
+<GuideLayout
+  slug="youth-baseball-gear-checklist"
+  metaTitle="Youth Baseball Gear Checklist: What Your Kid Needs by Age"
+  description="The complete first-season baseball checklist for parents: what’s required, what’s recommended and what to skip, from tee ball to high school, plus a printable bag list."
+  faqs={faqs}
+  sources={sources}
+  related={['youth-bat-size-chart', 'youth-glove-size-chart', 'tee-ball-gear']}
+>
+  <Fragment slot="answer">
+    <p>
+      Every player needs a <strong>glove</strong>, <strong>batting helmet</strong>, <strong>water bottle</strong> and <strong>cleats</strong> (sneakers are fine for tee
+      ball). From coach pitch up, add a <strong>bat with your league’s stamp</strong>, <strong>baseball pants</strong>, <strong>belt and socks</strong>, and a
+      <strong>cup</strong> for boys. Catchers need a catcher’s set. Ask the coach what the team provides before you buy.
+    </p>
+  </Fragment>
+
+  <h2 id="by-stage">The checklist by age</h2>
+  <p>
+    Find your kid’s stage across the top. Tap any item for sizing details.
+    <span class="legend"><span class="badge badge-must">Must</span> must-have · <span class="badge badge-recommended">Rec’d</span> recommended · <span class="badge badge-covered">Ask</span> ask the coach first</span>
+  </p>
+  <div class="table-wrap">
+    <table class="checklist-table">
+      <thead>
+        <tr>
+          <th scope="col">Gear</th>
+          {stages.map((s) => <th scope="col">{s.name}<small>Ages {s.ages}</small></th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((r) => (
+            <tr>
+              <th scope="row">
+                {r.href ? <a href={r.href}>{r.item}</a> : r.item}
+                {r.note && <small>{r.note}</small>}
+              </th>
+              {r.needs.map((n) => (
+                <td>{n === '—' ? <span class="muted">—</span> : <span class={`badge ${cls[n]}`}>{label[n]}</span>}</td>
+              ))}
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <CoachTip>
+    <p>
+      Want this list with your kid’s actual sizes filled in? The <a href="/gear-guide/">gear guide</a> asks a few questions and builds it for you, with a message to send
+      the coach and a budget estimate.
+    </p>
+  </CoachTip>
+
+  <h2 id="essentials">The essentials, explained</h2>
+
+  <h3 id="glove">Glove</h3>
+  <p>
+    The one thing every player uses at every practice. The right size is about <strong>9–10½″ for tee ball</strong>, <strong>10½–11″ for ages 7–8</strong> and
+    <strong>11–12″ for ages 9–12</strong>. A right-handed thrower needs an <strong>RHT</strong> glove, worn on the left hand.
+    <a href="/guides/youth-glove-size-chart/">Glove size chart →</a>
+  </p>
+
+  <h3 id="helmet">Batting helmet</h3>
+  <p>
+    Required to bat and run the bases. It must have the <strong>NOCSAE</strong> stamp and two ear flaps. Measure their head first, and we recommend a face guard for young
+    players. <a href="/guides/batting-helmet-size-guide/">Helmet sizing →</a>
+  </p>
+
+  <h3 id="bat">Bat</h3>
+  <p>
+    Length depends on height and weight; the stamp depends on the league. <strong>USA Baseball</strong> for Little League and rec, usually <strong>USSSA</strong> for
+    travel, and <strong>BBCOR</strong> for high school. <a href="/guides/youth-bat-size-chart/">Bat size chart →</a>
+  </p>
+
+  <h3 id="cleats">Cleats</h3>
+  <p>
+    <strong>Molded cleats only for 12 and under</strong> in Little League. Buy their sneaker size with a thumb’s width at the toe.
+    <a href="/guides/youth-baseball-cleats/">Cleats guide →</a>
+  </p>
+
+  <h3 id="uniform">Pants, belt and socks</h3>
+  <p>
+    Usually part of the uniform, so <strong>ask the coach for the color and style</strong> (full-length, knicker or open-bottom) before buying. Get two pairs of pants: one
+    for practice, one for games. Reinforced knees last longer.
+  </p>
+  <ShopButtons query="youth baseball pants" what="youth baseball pants" item="guide-checklist-pants" />
+
+  <h3 id="protection">Protective cup and sliding shorts</h3>
+  <p>
+    Little League requires a cup for catchers and recommends an athletic supporter or compression shorts for boys at practice. Compression shorts with a built-in cup pocket
+    are the easiest option for kids. Sliding shorts add padding on the hips once they start sliding.
+  </p>
+  <ShopButtons query="youth compression shorts with cup baseball" what="youth cups + shorts" item="guide-checklist-cup" />
+
+  <h3 id="bag">Bat bag and water bottle</h3>
+  <p>
+    A backpack-style bat bag lets kids carry their own gear (good for them, good for your back). Pick one with a fence hook. And a big water bottle with their name on it
+    is the cheapest must-have on the list.
+  </p>
+  <ShopButtons query="youth baseball backpack bat bag" what="youth bat bags" item="guide-checklist-bag" />
+
+  <h2 id="provided">What the team usually provides</h2>
+  <ul>
+    <li><strong>Almost always:</strong> jersey and team hat, baseballs, bases and field equipment.</li>
+    <li><strong>Often:</strong> batting helmets, a few team bats, catcher’s gear.</li>
+    <li><strong>Sometimes:</strong> pants, socks and belts.</li>
+  </ul>
+
+  <h2 id="printable">Printable bag checklist</h2>
+  <p>Print it, tape it inside the bag, and let your kid check things off before every practice.</p>
+  <div class="card printable">
+    <ul class="print-list">
+      {
+        printable.map((p) => (
+          <li>
+            <span class="box" aria-hidden="true" />
+            {p}
+          </li>
+        ))
+      }
+    </ul>
+    <button type="button" class="btn btn-ghost no-print" onclick="window.print()"><Icon name="print" /> Print this checklist</button>
+  </div>
+</GuideLayout>
+
+<style>
+  .checklist-table th[scope='row'] {
+    white-space: normal;
+    min-width: 11rem;
+  }
+  .checklist-table th small {
+    display: block;
+    font-weight: 400;
+    color: var(--ink-3);
+  }
+  .checklist-table td {
+    text-align: center;
+  }
+  .checklist-table thead th {
+    white-space: normal;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .checklist-table thead th:first-child {
+    text-align: left;
+  }
+  .checklist-table thead small {
+    display: block;
+    font: 600 0.78rem/1.3 var(--font);
+    color: var(--ink-3);
+  }
+  .checklist-table td,
+  .checklist-table th {
+    padding: 0.55rem 0.5rem;
+  }
+  .legend {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--ink-3);
+  }
+  .print-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem;
+    columns: 2 14rem;
+  }
+  .print-list li {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    padding: 0.4rem 0;
+    break-inside: avoid;
+  }
+  .box {
+    flex: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 2px solid var(--ink);
+    border-radius: 4px;
+  }
+  .printable :global(.icon) {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+</style>

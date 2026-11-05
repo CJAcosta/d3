@@ -1,0 +1,20 @@
+---
+import Icon from './Icon.astro';
+interface Props {
+  title?: string;
+  text?: string;
+  button?: string;
+  track?: string;
+}
+const {
+  title = 'Skip the charts. Get your kid’s exact sizes.',
+  text = 'Answer a few quick questions (age, height, throwing hand, league) and we’ll build a personalized gear list with every size filled in. Free, about 3 minutes.',
+  button = 'Build my gear list',
+  track = 'cta_band',
+} = Astro.props;
+---
+<aside class="cta-band no-print">
+  <h2 style="font-size:1.6rem">{title}</h2>
+  <p>{text}</p>
+  <a class="btn btn-light btn-lg" href="/gear-guide/" data-track={track}>{button} <Icon name="arrow" /></a>
+</aside>

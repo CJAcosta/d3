@@ -1,0 +1,85 @@
+---
+import GuideLayout from '../../layouts/GuideLayout.astro';
+import ShopButtons from '../../components/ShopButtons.astro';
+import CoachTip from '../../components/CoachTip.astro';
+
+const faqs = [
+  {
+    q: 'What size glove for tee ball?',
+    a: 'About 9–10½″. Most 4-year-olds use a 9″ glove and most 6-year-olds a 10″. Soft synthetic gloves are perfect because little hands can close them right away.',
+  },
+  {
+    q: 'What size bat for tee ball?',
+    a: 'Usually 24–26″, and light (−10 to −13). Little League tee ball bats must be 26″ or shorter and carry the USA Baseball mark with the words “Only for use with approved tee balls.”',
+  },
+  {
+    q: 'Does a tee ball player need cleats?',
+    a: 'No. Sneakers are fine. Molded cleats are a nice extra for wet grass.',
+  },
+  {
+    q: 'How much should tee ball gear cost?',
+    a: 'You can get everything a tee ball player needs for well under $150, and less if the team provides helmets and bats.',
+  },
+];
+
+const sources = [{ label: 'Little League® bat rules (tee ball section)', href: 'https://www.littleleague.org/playing-rules-/bat-rules' }];
+---
+<GuideLayout
+  slug="tee-ball-gear"
+  metaTitle="Tee Ball Gear Checklist: What a 4–6 Year Old Really Needs"
+  description="The short list of tee ball gear for the littlest players, the sizes that fit, and the things you don’t need to buy yet."
+  faqs={faqs}
+  sources={sources}
+  related={['youth-baseball-gear-checklist', 'youth-glove-size-chart', 'youth-bat-size-chart']}
+>
+  <Fragment slot="answer">
+    <p>
+      A tee ball player really needs just <strong>a glove (9–10½″)</strong>, <strong>a batting helmet</strong> (often provided), <strong>a water bottle</strong>, and comfy
+      clothes and sneakers. A light <strong>tee ball bat (24–26″)</strong> is a great extra. Everything else can wait.
+    </p>
+  </Fragment>
+
+  <h2 id="list">The tee ball short list</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th scope="col">Item</th><th scope="col">Need it?</th><th scope="col">Size / notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><th scope="row">Glove</th><td>Must-have</td><td>9–10½″. Soft synthetic. Velcro wrist strap.</td></tr>
+        <tr><th scope="row">Batting helmet</th><td>Must-have (ask if provided)</td><td>Tee ball or junior size, with a face guard</td></tr>
+        <tr><th scope="row">Water bottle</th><td>Must-have</td><td>With their name on it</td></tr>
+        <tr><th scope="row">Tee ball bat</th><td>Recommended</td><td>24–26″, −10 to −13, USA Baseball tee ball mark</td></tr>
+        <tr><th scope="row">Cleats</th><td>Optional</td><td>Sneakers are fine. Molded cleats only.</td></tr>
+        <tr><th scope="row">Baseball pants</th><td>Ask the coach</td><td>Some leagues just use a team shirt and hat</td></tr>
+        <tr><th scope="row">Cup (boys)</th><td>Recommended</td><td>Peewee size with compression shorts</td></tr>
+        <tr><th scope="row">Batting tee + soft balls</th><td>Nice to have</td><td>For backyard practice. The best confidence builder there is.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="bats">Tee ball bats are their own thing</h2>
+  <p>
+    Tee ball bats are short, very light and made for soft tee balls. In Little League they must be <strong>26″ or shorter</strong> and carry the
+    <strong>USA Baseball mark plus “Only for use with approved tee balls.”</strong> They can be used in coach-pitch and machine-pitch divisions too, but only with tee
+    balls. Once kids face regular baseballs, they need a regular USA Baseball bat.
+  </p>
+
+  <h2 id="skip">What you can skip for now</h2>
+  <ul>
+    <li><strong>Expensive bats.</strong> A basic tee ball bat does everything a 5-year-old needs.</li>
+    <li><strong>Batting gloves.</strong> Cute, but most little kids spend more time fixing them than hitting.</li>
+    <li><strong>A big bat bag.</strong> A regular backpack works.</li>
+    <li><strong>Position gloves.</strong> Everyone plays everywhere in tee ball.</li>
+  </ul>
+  <CoachTip>
+    <p>The best tee ball purchase isn’t on a uniform list: a batting tee and a bucket of soft balls for the backyard. Ten minutes a day and they’ll be the star of practice.</p>
+  </CoachTip>
+
+  <h2 id="shop">Shop tee ball gear</h2>
+  <ShopButtons query="tee ball glove 10 inch" what="tee ball gloves" item="guide-teeball-glove" />
+  <div style="height:.75rem"></div>
+  <ShopButtons query="USA Baseball tee ball bat" what="tee ball bats" item="guide-teeball-bat" />
+  <div style="height:.75rem"></div>
+  <ShopButtons query="tee ball batting helmet with face guard" what="tee ball helmets" item="guide-teeball-helmet" />
+</GuideLayout>
