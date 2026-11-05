@@ -138,14 +138,29 @@ Each motor is a cost, a weight and a failure point. That is the main argument
 against eight legs. It is also why the six-leg version in the concept image is
 the likelier compromise.
 
+## The whole robot on a 50% slope
+
+`coffeesim/field.py` puts the legs, both arms, the cameras and the basket on
+one 32 kg body. It stands on the coffee belt's median slope with the plant
+uphill (results in the README).
+
+In 14 attempts it took 11 ripe fruit, each at its own pull-off force. The 3
+that held on all needed more than 5 N, so the cap left them as designed.
+There were no seal slips or wrong fruit, and it took or knocked off no green
+or half-ripe fruit.
+
+Standing on six legs while picking, its stability margin was 33 cm and its
+leg joints peaked at 9 N m. Walking, those figures were 14.5 cm and 24 N m.
+So on this slope the arms are not what limits the robot; walking is.
+
 ## Still to test
 
 - Rough ground: steps, roots, terraces and soft soil, from 1 m lidar profiles
   of actual PROCAFE farms.
 - A controller that shares foot forces within each foot's grip, which should
   close the gap to the ideal (grade = grip).
-- Arms working while standing on the slope, and walking with a load shifting
-  as the basket fills.
+- Walking with a load that shifts as the basket fills. Arms working while
+  the robot stands on the slope is done: see below.
 - Against the same terrain: a quadruped with one arm (DEEP Robotics' X30 or
   Lite3 models on Hugging Face, `deeproboticslab/simready-assets`) and a
   tracked carrier. Score them on tip-over margin with the arm loaded, slip,

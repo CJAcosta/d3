@@ -227,6 +227,56 @@ tipping physics and what is still untested are in
 [`docs/platform-crab.md`](docs/platform-crab.md); full tables are in
 [`results/walk_summary.md`](results/walk_summary.md).
 
+## The whole robot on the median slope
+
+![Walk the row, pick with claw and cup, walk on](results/field_pick_frames.png)
+
+Video: [`results/field_pick.mp4`](results/field_pick.mp4), at 2× speed. The
+attempts and stability figures are in
+[`results/field_pick.json`](results/field_pick.json).
+
+Everything is now on one body:
+
+- the six legs (deep footprint, body leaning half the slope, tripod gait);
+- the claw and cup arms;
+- the stalk cameras and the basket.
+
+It stands on a 50% slope, the coffee belt's median, with the plant uphill
+(`coffeesim/field.py`). It walks along the contour row to the plant, stands
+on its legs while it picks, and walks on. The robot weighs 32 kg, and the
+arms' weight goes through the legs. Grip is 1.2, the spiked-foot
+assumption. The run was capped at 14 pick attempts, because long runs get
+cut off in this cloud container.
+
+| | |
+|---|---|
+| Pick attempts | 14 |
+| Came off at their own pull-off force | 11 |
+| Held on (ripe fruit needing more than 5 N; left on, as designed) | 3 |
+| Seal slipped, branch bent, wrong fruit | 0 |
+| Ripe/overripe in the basket | 10 (one missed the basket) |
+| Green or half-ripe taken or knocked off | 0 |
+
+| | Walking (1.5 m in all) | Standing and picking (172 s) |
+|---|---|---|
+| Stability margin, 5th percentile | 14.5 cm | 33.4 cm |
+| Worst downhill drift from plan | 4.7 cm | 3.6 cm (left over from the walk in) |
+| Worst body tilt | 0.2° | 0.1° |
+| Peak leg joint torque | 24 N m | 9 N m |
+
+**Picking on the slope is no harder than on flat ground.** The first 14
+attempts in the flat-ground run on the same branch included a seal slip; here
+there were none. A body standing on all six legs has more than twice its
+walking margin, and the arms' pulls (5 N at most) and weight barely register
+in the legs. Walking, not picking, is where the robot is closest to its
+limits.
+
+One modelling lesson: the combined scene first used the branch model's
+default friction settings, and the feet crept downhill 12–24 cm per metre.
+With the walking study's stiffer friction model it slid 2–5 cm, as there.
+Real soil creeps too. How much a planted foot creeps under a steady sideways
+load belongs in field protocol item 4b.
+
 ## What is in the model
 
 ![Three moments of a comb pass](results/comb_pass.png)
@@ -256,7 +306,7 @@ Every number in `coffeesim/params.py` names its source or is marked
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q tests                  # 16 tests, ~30 s
+python -m pytest -q tests                  # 18 tests, ~1 min
 python scripts/run_sweep.py                # 240 runs, ~7 min on 4 cores
 python scripts/summarize.py                # results/summary.md + tradeoff.png
 MUJOCO_GL=osmesa python scripts/render_pass.py   # results/comb_pass.png (headless needs libosmesa6)
@@ -265,6 +315,7 @@ python scripts/pr_slopes.py                      # coffee-belt slopes from USGS 
 python scripts/walk_sweep.py                     # 288 walking runs, ~5 min on 4 cores
 python scripts/walk_summary.py                   # results/walk_summary.md + walk_coverage.png
 MUJOCO_GL=osmesa python scripts/walk_demo.py     # two crabs on a 50% slope, ~1 min
+MUJOCO_GL=osmesa python scripts/field_demo.py    # whole robot: walk, pick, walk on; ~20 min
 ```
 
 ## Layout
@@ -280,6 +331,7 @@ MUJOCO_GL=osmesa python scripts/walk_demo.py     # two crabs on a 50% slope, ~1 
 | `coffeesim/picker.py` | Two-armed crab: cameras, claw, suction cup, picking loop |
 | `scripts/pick_demo.py` | Films the picker; writes the video, stills and attempt log |
 | `coffeesim/walker.py` | Six-legged crab walking the contour: gaits, postures, leg IK |
+| `coffeesim/field.py` | The whole robot on a slope: legs, both arms, cameras, basket on one body |
 | `scripts/pr_slopes.py` | Slope distribution of the coffee belt from USGS elevation data |
 | `docs/field-protocol.md` | What PROCAFE can measure to replace the assumptions |
 | `docs/platform-crab.md` | The crab body plan on Puerto Rico slopes |
@@ -293,10 +345,11 @@ MUJOCO_GL=osmesa python scripts/walk_demo.py     # two crabs on a 50% slope, ~1 
    branches during the Puerto Rico harvest. It measures what the simulation
    cannot: leaf and bud damage, and lateral pull-off. A dial-a-force comb
    costs little and answers the main question directly.
-3. **Platform.** First pass done: the crab-hexapod walking smooth slopes
-   (above). Next: rough ground from 1 m lidar of PROCAFE farms,
-   force-controlled legs, arms working on the slope, and the same tests for a
-   quadruped and a tracked carrier (`docs/platform-crab.md`).
+3. **Platform.** First pass done: the crab-hexapod walking smooth slopes, and
+   the whole robot walking and picking on the median slope (above). Next:
+   rough ground from 1 m lidar of PROCAFE farms, force-controlled legs, and
+   the same tests for a quadruped and a tracked carrier
+   (`docs/platform-crab.md`).
 4. **Perception.** Branch and ripeness detection under canopy shade, trained
    on the field photos from the protocol.
 

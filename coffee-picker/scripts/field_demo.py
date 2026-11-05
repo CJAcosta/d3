@@ -1,6 +1,6 @@
 """Film the whole robot on a 50% slope: walk the row, pick a plant, walk on.
 
-    MUJOCO_GL=osmesa python scripts/field_demo.py            # ~30 min headless
+    MUJOCO_GL=osmesa python scripts/field_demo.py            # ~20 min headless, 14 pick attempts
     MUJOCO_GL=osmesa python scripts/field_demo.py --grade 0.6
 
 Writes results/field_pick.mp4 (2x speed), results/field_pick_frames.png and
@@ -29,12 +29,25 @@ def main():
     ap.add_argument("--mu", type=float, default=1.2)
     ap.add_argument("--procs", type=int, default=os.cpu_count())
     ap.add_argument("--out", default="field_pick")
+    # Long runs are at risk in a cloud container, so the film caps the pick
+    # attempts at the plant; the default is enough to show the whole cycle.
+    ap.add_argument("--picks", type=int, default=14, help="most pick attempts at the plant")
+    ap.add_argument("--start", type=float, default=-0.6, help="where the walk starts along the row [m]")
+    ap.add_argument("--end", type=float, default=0.9, help="where it ends [m]")
     a = ap.parse_args()
     os.makedirs(RESULTS, exist_ok=True)
     rec = Recorder()
-    crab = FieldCrab(field=FieldConfig(grade=a.grade, mu=a.mu), seed=a.seed, on_frame=rec,
+    record = rec.__call__
+
+    def progress(picker):
+        record(picker)
+        if len(rec.frames) % 900 == 0:
+            print(f"sim {picker.data.time:.0f} s: {picker.status}", flush=True)
+
+    crab = FieldCrab(field=FieldConfig(grade=a.grade, mu=a.mu, start_x=a.start, end_x=a.end), seed=a.seed,
+                     on_frame=progress,
                      frame_dt=SPEEDUP / FPS)
-    summary = crab.episode()
+    summary = crab.episode(max_picks=a.picks)
     print(f"physics done: {len(rec.frames)} frames", flush=True)
     status = [f[1] for f in rec.frames]
     walk_in = next(i for i, s in enumerate(status) if s.startswith("Walking along"))

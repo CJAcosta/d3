@@ -114,6 +114,11 @@ which is about 49 N for 5 kg. Run 10 pulls per foot type, for each of:
 - leaf litter;
 - bare clay.
 
+**Creep:** soil can give way slowly under a load that would not make a foot
+slide at once. For each foot type and soil, hold half the peak pull steady
+for 2 minutes and measure how far the foot moves. In simulation, a little
+creep made the robot slide 12–24 cm per metre walked.
+
 ## 5. Today's picking, as the baseline
 
 Video three or four pickers for 15 minutes each, recording branches per
