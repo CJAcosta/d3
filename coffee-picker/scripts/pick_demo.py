@@ -61,12 +61,24 @@ class Recorder:
 
 
 _W = {}
+VIEWS = ("film_wide", "film_close")
 
 
-def _init(xml):
+def _init(xml, views=VIEWS):
     m = mujoco.MjModel.from_xml_string(xml)
     _W.update(model=m, data=mujoco.MjData(m), renderer=mujoco.Renderer(m, H, W),
-              big=font(20), small=font(16))
+              big=font(20), small=font(16), views=views)
+
+
+def _camera(view, m, d):
+    """A named camera, or a dict that tracks a body: {"track": body name,
+    "offset": [x, y, z], "distance", "azimuth", "elevation"}."""
+    if isinstance(view, str):
+        return view
+    cam = mujoco.MjvCamera()
+    cam.lookat[:] = d.xpos[m.body(view["track"]).id] + view.get("offset", (0, 0, 0))
+    cam.distance, cam.azimuth, cam.elevation = view["distance"], view["azimuth"], view["elevation"]
+    return cam
 
 
 def _render(frame):
@@ -75,8 +87,8 @@ def _render(frame):
     d.qpos[:] = qpos
     mujoco.mj_forward(m, d)
     views = []
-    for cam in ("film_wide", "film_close"):
-        r.update_scene(d, camera=cam)
+    for view in _W["views"]:
+        r.update_scene(d, camera=_camera(view, m, d))
         r.scene.flags[mujoco.mjtRndFlag.mjRND_SHADOW] = 0
         r.scene.flags[mujoco.mjtRndFlag.mjRND_REFLECTION] = 0
         views.append(r.render())
@@ -114,6 +126,45 @@ def key_moments(frames):
     return [0, len(frames) // 2, len(frames) - 1]
 
 
+def write_film(xml, frames, stem, views=VIEWS, stills=(), procs=None):
+    """Render recorded frames in parallel to results/<stem>.mp4, and stack the
+    frames at indices `stills` into results/<stem>_frames.png."""
+    stills = set(stills)
+    kept = {}
+    ff = subprocess.Popen(
+        ["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
+         "-s", f"{2 * W}x{H + STRIP}", "-r", str(FPS), "-i", "-",
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "26", "-preset", "medium",
+         "-movflags", "+faststart", os.path.join(RESULTS, f"{stem}.mp4")],
+        stdin=subprocess.PIPE)
+    # Spawned workers: each opens its own GL context.
+    with mp.get_context("spawn").Pool(procs or os.cpu_count(), initializer=_init, initargs=(xml, views)) as pool:
+        for i, frame in enumerate(pool.imap(_render, frames, chunksize=16)):
+            ff.stdin.write(frame)
+            if i in stills:
+                kept[i] = frame
+            if i % 500 == 0:
+                print(f"rendered {i}/{len(frames)}", flush=True)
+    ff.stdin.close()
+    ff.wait()
+
+    size = (2 * W, H + STRIP)
+    shots = [Image.frombytes("RGB", size, kept[i]) for i in sorted(kept)]
+    sheet = Image.new("RGB", (size[0], size[1] * len(shots)), (252, 252, 251))
+    for k, img in enumerate(shots):
+        sheet.paste(img, (0, k * size[1]))
+    sheet.resize((size[0] // 2, size[1] * len(shots) // 2), Image.LANCZOS).save(
+        os.path.join(RESULTS, f"{stem}_frames.png"))
+
+
+def attempt_log(picker):
+    return [dict(fruit=r.fruit, stage=r.stage, pull_off_N=round(r.threshold, 2), sealed=r.sealed,
+                 sealed_stage=picker.info.stages[r.sealed] if r.sealed >= 0 else None,
+                 outcome=r.outcome, branch_held=r.held, seal_peak_N=round(r.seal_peak, 2),
+                 t_start=round(r.t_start, 2), seconds=round(r.t_end - r.t_start, 2),
+                 collateral=[picker.info.stages[c] for c in r.collateral]) for r in picker.records]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", type=int, default=1)
@@ -128,41 +179,9 @@ def main():
                     frame_dt=SPEEDUP / FPS)
     summary = picker.run()
     print(f"physics done: {len(rec.frames)} frames", flush=True)
-
-    stills = set(key_moments(rec.frames))
-    kept = {}
-    ff = subprocess.Popen(
-        ["ffmpeg", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
-         "-s", f"{2 * W}x{H + STRIP}", "-r", str(FPS), "-i", "-",
-         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "26", "-preset", "medium",
-         "-movflags", "+faststart", os.path.join(RESULTS, f"{a.out}.mp4")],
-        stdin=subprocess.PIPE)
-    # Spawned workers: each opens its own GL context.
-    with mp.get_context("spawn").Pool(a.procs, initializer=_init, initargs=(picker.info.xml,)) as pool:
-        for i, frame in enumerate(pool.imap(_render, rec.frames, chunksize=16)):
-            ff.stdin.write(frame)
-            if i in stills:
-                kept[i] = frame
-            if i % 500 == 0:
-                print(f"rendered {i}/{len(rec.frames)}", flush=True)
-    ff.stdin.close()
-    ff.wait()
-
-    size = (2 * W, H + STRIP)
-    shots = [Image.frombytes("RGB", size, kept[i]) for i in sorted(kept)]
-    sheet = Image.new("RGB", (size[0], size[1] * len(shots)), (252, 252, 251))
-    for k, img in enumerate(shots):
-        sheet.paste(img, (0, k * size[1]))
-    sheet.resize((size[0] // 2, size[1] * len(shots) // 2), Image.LANCZOS).save(
-        os.path.join(RESULTS, f"{a.out}_frames.png"))
-
-    log = [dict(fruit=r.fruit, stage=r.stage, pull_off_N=round(r.threshold, 2), sealed=r.sealed,
-                sealed_stage=picker.info.stages[r.sealed] if r.sealed >= 0 else None,
-                outcome=r.outcome, branch_held=r.held, seal_peak_N=round(r.seal_peak, 2),
-                t_start=round(r.t_start, 2), seconds=round(r.t_end - r.t_start, 2),
-                collateral=[picker.info.stages[c] for c in r.collateral]) for r in picker.records]
+    write_film(picker.info.xml, rec.frames, a.out, stills=key_moments(rec.frames), procs=a.procs)
     with open(os.path.join(RESULTS, f"{a.out}.json"), "w") as f:
-        json.dump({"seed": a.seed, "summary": summary, "picks": log}, f, indent=1)
+        json.dump({"seed": a.seed, "summary": summary, "picks": attempt_log(picker)}, f, indent=1)
     print(json.dumps(summary, indent=1))
 
 

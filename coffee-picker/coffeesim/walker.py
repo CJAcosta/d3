@@ -103,8 +103,12 @@ def _f(v):
     return " ".join(f"{x:.5g}" for x in v)
 
 
-def crab_xml(d, grade, mu, timestep=1e-3):
-    theta = math.atan(grade)
+LEG_KP = {"c": 800, "f": 2000, "t": 2000}
+
+
+def legs_xml(d, mu, foot_bits=""):
+    """MJCF bodies for the six legs, to sit inside the crab's body.
+    `foot_bits` sets the feet's collision bits (default: collide with all)."""
     hx, hy = d.hip_x, d.hip_y
     legs = []
     for name in LEGS:
@@ -125,18 +129,26 @@ def crab_xml(d, grade, mu, timestep=1e-3):
        <joint name="{name}_t" axis="0 1 0" range="0 2.9" armature="0.01" damping="1"/>
        <geom type="capsule" fromto="0 0 0 {d.tibia - d.foot_radius} 0 0" size="0.016" mass="{d.link_mass[2]}" rgba=".16 .17 .18 1" contype="0" conaffinity="0"/>
        <geom name="{name}_foot" type="sphere" pos="{d.tibia - d.foot_radius} 0 0" size="{d.foot_radius}" mass="0.05"
-             friction="{mu} 0.01 0.001" rgba=".12 .5 .27 1"/>
+             friction="{mu} 0.01 0.001" rgba=".12 .5 .27 1" {foot_bits}/>
        <site name="{name}_tip" pos="{d.tibia} 0 0" size="0.005"/>
       </body>
      </body>
     </body>
    </body>""")
+    return "".join(legs)
+
+
+def leg_actuators_xml():
+    return "".join(f'<position name="{n}_{j}" joint="{n}_{j}" kp="{LEG_KP[j]}" dampratio="1"/>'
+                   for n in LEGS for j in "cft")
+
+
+def crab_xml(d, grade, mu, timestep=1e-3):
+    theta = math.atan(grade)
     bx, by, bz = (s / 2 for s in d.body_size)
     payload = (f'<geom type="box" pos="{_f(d.payload_pos)}" size="0.07 0.07 0.04" mass="{d.payload}" '
                f'rgba=".55 .4 .25 1" contype="0" conaffinity="0"/>' if d.payload > 0 else "")
-    kp = {"c": 800, "f": 2000, "t": 2000}
-    act = "".join(f'<position name="{n}_{j}" joint="{n}_{j}" kp="{kp[j]}" dampratio="1"/>'
-                  for n in LEGS for j in "cft")
+    act = leg_actuators_xml()
     return f"""
 <mujoco model="crab_walker">
   <compiler angle="radian" autolimits="true"/>
@@ -155,7 +167,7 @@ def crab_xml(d, grade, mu, timestep=1e-3):
      <freejoint/>
      <geom name="carapace" type="ellipsoid" size="{bx} {by} {bz}" mass="{d.body_mass}" rgba=".92 .92 .9 1"/>
      {payload}
-     {"".join(legs)}
+     {legs_xml(d, mu)}
     </body>
   </worldbody>
   <actuator>{act}</actuator>
@@ -230,6 +242,63 @@ def stability_margin(com_xy, feet_xy):
         n = np.array([e[1], -e[0]]) / np.linalg.norm(e)  # outward for a CCW hull
         best = min(best, -np.dot(com_xy - a, n))
     return float(best)
+
+
+class Footwork:
+    """Footholds and swing paths for a gait, against a planned body path.
+
+    `plan(t)` gives the planned body pose (p, R, tilt) at time t. `start(t0)`
+    sets the gait clock running; `stop()` lets swings in flight land but
+    starts no new ones, so a walk can end with every foot down. `neutral(n,
+    p, R)` places leg n's neutral foothold for a body pose.
+    """
+
+    def __init__(self, gait, neutral, feet):
+        self.gait, self.neutral, self.feet = gait, neutral, feet
+        self.t0 = None
+        self.lifted = {n: None for n in LEGS}   # (t0, start, target, t_land) while swinging
+        self.last_cycle = {n: -1 for n in LEGS}  # one swing per leg per cycle
+        self.new_swings = False
+
+    def start(self, t0):
+        self.t0, self.new_swings = t0, True
+        self.last_cycle = {n: -1 for n in LEGS}
+
+    def stop(self):
+        self.new_swings = False
+
+    @property
+    def stance(self):
+        return {n for n in LEGS if self.lifted[n] is None}
+
+    def update(self, t, plan):
+        g, feet = self.gait, self.feet
+        T, duty = g.period, g.duty
+        if self.t0 is None or t < self.t0:
+            return feet
+        phase_t = (t - self.t0) / T
+        for n in LEGS:
+            ph = (phase_t - g.offsets[n]) % 1.0
+            cycle = math.floor(phase_t - g.offsets[n])
+            swinging = ph < (1 - duty) and cycle >= 0 and cycle > self.last_cycle[n]
+            if swinging and self.lifted[n] is None and self.new_swings:
+                self.last_cycle[n] = cycle
+                # Land where this foot's neutral spot will be at mid-stance,
+                # so stance straddles neutral.
+                t_land = t + (1 - duty - ph) * T
+                p_land, R_land, _ = plan(t_land + 0.5 * duty * T)
+                self.lifted[n] = (t, feet[n].copy(), self.neutral(n, p_land, R_land), t_land)
+            if self.lifted[n] is not None:
+                t0, a, b, t_land = self.lifted[n]
+                tau = min(1.0, (t - t0) / max(1e-6, t_land - t0))
+                s = 0.5 - 0.5 * math.cos(math.pi * tau)
+                feet_n = a + s * (b - a)
+                feet_n[2] += g.lift * math.sin(math.pi * tau)
+                feet[n] = feet_n
+                if tau >= 1.0:
+                    feet[n] = b.copy()
+                    self.lifted[n] = None
+        return feet
 
 
 class Walker:
@@ -320,10 +389,10 @@ class Walker:
         self.set_joints(p, R, feet)
         mujoco.mj_forward(m, data)
 
-        T, duty = g.period, g.duty
         t_end = settle + distance / self.speed
-        lifted = {n: None for n in LEGS}   # (t0, start, target, t_land) while swinging
-        last_cycle = {n: -1 for n in LEGS}  # one swing per leg per cycle
+        plan = lambda t: self.body_pose(t, settle)
+        steps_feet = Footwork(g, self.neutral_world, feet)
+        steps_feet.start(settle)
         drift = tilt_err = 0.0
         margins, over, peak, fric = [], 0, {"coxa": 0.0, "femur": 0.0, "tibia": 0.0}, 0.0
         steps = int(round(t_end / dt))
@@ -331,33 +400,10 @@ class Walker:
         outcome = None
         for i in range(steps):
             t = i * dt
-            p, R, tilt = self.body_pose(t, settle)
-            if t >= settle:
-                phase_t = (t - settle) / T
-                for n in LEGS:
-                    ph = (phase_t - g.offsets[n]) % 1.0
-                    cycle = math.floor(phase_t - g.offsets[n])
-                    swinging = ph < (1 - duty) and cycle >= 0 and cycle > last_cycle[n]
-                    if swinging and lifted[n] is None:
-                        last_cycle[n] = cycle
-                        # Land where this foot's neutral spot will be at
-                        # mid-stance, so stance straddles neutral.
-                        t_land = t + (1 - duty - ph) * T
-                        p_land, R_land, _ = self.body_pose(t_land + 0.5 * duty * T, settle)
-                        lifted[n] = (t, feet[n].copy(), self.neutral_world(n, p_land, R_land), t_land)
-                    if lifted[n] is not None:
-                        t0, a, b, t_land = lifted[n]
-                        tau = min(1.0, (t - t0) / max(1e-6, t_land - t0))
-                        s = 0.5 - 0.5 * math.cos(math.pi * tau)
-                        feet_n = a + s * (b - a)
-                        feet_n[2] += g.lift * math.sin(math.pi * tau)
-                        feet[n] = feet_n
-                        if tau >= 1.0:
-                            feet[n] = b.copy()
-                            lifted[n] = None
-            stance = {n for n in LEGS if lifted[n] is None}
+            p, R, tilt = plan(t)
+            feet = steps_feet.update(t, plan)
             # Only count it when a supporting leg cannot reach its foothold.
-            if self.set_joints(p, R, feet) & stance:
+            if self.set_joints(p, R, feet) & steps_feet.stance:
                 over += 1
             mujoco.mj_step(m, data)
             if on_frame and data.time >= next_frame:

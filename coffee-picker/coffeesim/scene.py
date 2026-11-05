@@ -117,13 +117,13 @@ def _leaf_pair(x, start=0.024, half_len=0.06, half_width=0.022, droop=0.3):
     return "".join(xml)
 
 
-def _branch_xml(branch, cherry, stages, rng, out):
+def _branch_xml(branch, cherry, stages, rng, out, height=BRANCH_HEIGHT):
     L = branch.internode
     xml = []
     for j in range(branch.n_nodes):
         r = _radius_at(branch, (j + 0.5) * L)
         k = branch.youngs_modulus * np.pi * (2 * r) ** 4 / 64 / L
-        pos = f"0 0 {BRANCH_HEIGHT}" if j == 0 else f"{L} 0 0"
+        pos = f"0 0 {height}" if j == 0 else f"{L} 0 0"
         hinges = "".join(
             f'<joint name="seg{j}_{ax}" type="hinge" axis="{v}" stiffness="{k:.6g}" '
             f'damping="{0.003 * k:.6g}" armature="1e-6"/>'
@@ -185,13 +185,14 @@ def _comb_xml(comb, branch, cherry):
 
 
 def build_scene(branch=None, cherry=None, comb=None, rng=None, stages=None,
-                timestep=4e-4, extra_asset="", extra_world="", extra_sections=""):
+                timestep=4e-4, extra_asset="", extra_world="", extra_sections="", height=BRANCH_HEIGHT):
     """Return a SceneInfo with MJCF text and per-cherry bookkeeping.
 
     `stages` fixes the ripeness of each occupied fruit site in order;
     otherwise they are drawn from `branch.stage_mix`. The `extra_*` strings
     are spliced into <asset>, <worldbody> and after it (actuators, sensors),
-    so other tools such as the picking arm can share the branch.
+    so other tools such as the picking arm can share the branch. `height` is
+    where the branch leaves the trunk, above the trunk's foot at the origin.
     """
     branch = branch or Branch()
     cherry = cherry or Cherry()
@@ -203,7 +204,7 @@ def build_scene(branch=None, cherry=None, comb=None, rng=None, stages=None,
         if s not in STAGES:
             raise ValueError(f"unknown stage {s!r}")
     out = {"node_of": [], "stages": [], "stiffness": []}
-    body = _branch_xml(branch, cherry, stages, rng, out)
+    body = _branch_xml(branch, cherry, stages, rng, out, height)
     # MuJoCo's default 20 ms constraint time constant is far too soft for
     # gram-scale fruit pushed with newtons; tighten contacts and limits.
     tc = 5 * timestep

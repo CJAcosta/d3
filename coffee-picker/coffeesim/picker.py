@@ -178,6 +178,25 @@ def _arm_xml(prefix, base, tool):
 </body>"""
 
 
+ARM_KP = {"j1": 1500, "j2": 3000, "j3": 2000, "j4": 600, "j5": 400}
+
+
+def arm_actuators_xml():
+    return "".join(f'<position name="{a}_{j}" joint="{a}_{j}" kp="{ARM_KP[j]}" dampratio="1" ctrllimited="false"/>'
+                   for a in ("p", "h") for j in ARM_JOINTS)
+
+
+def seal_grip_xml(cfg, n_fruit, n_seg):
+    """Dormant constraints: a cup seal per fruit, a claw grip per branch segment."""
+    tc = 5 * cfg.timestep
+    soft = f'active="false" solref="{tc} 1" solimp="0.95 0.99 0.0005"'
+    eq = "".join(f'<connect name="seal{k}" body1="cup" body2="cherry{k}" anchor="0 0 0.004" {soft}/>'
+                 for k in range(n_fruit))
+    eq += "".join(f'<connect name="grip{j}" body1="h_tool" body2="seg{j}" anchor="0 0 0.03" {soft}/>'
+                  for j in range(n_seg))
+    return eq
+
+
 def robot_xml(cfg, n_fruit, n_seg):
     """(asset, worldbody, sections) MJCF strings for ground, robot and cameras.
 
@@ -230,6 +249,7 @@ def robot_xml(cfg, n_fruit, n_seg):
              ((0, -0.07, 0), (0.07, 0.005, 0.035))]
     for off, size in walls:
         r.append(f'<geom type="box" pos="{_f(b + off)}" size="{_f(size)}" rgba=".55 .4 .25 1" contype="2" conaffinity="0"/>')
+    r.append(f'<site name="basket" pos="{_f(b)}" size="0.005" rgba="0 0 0 0"/>')
     r.append(_arm_xml("p", cfg.pick_base, "cup"))
     r.append(_arm_xml("h", cfg.hold_base, "claw"))
     for name, (pos, target, fovy) in FILMS.items():
@@ -237,15 +257,8 @@ def robot_xml(cfg, n_fruit, n_seg):
         r.append(f'<camera name="{name}" pos="{_f(pos)}" xyaxes="{_xyaxes(pos, target)}" fovy="{fovy}"/>')
     r.append('<light pos="1.5 -1.5 2.5" dir="-0.5 0.5 -1" diffuse=".5 .5 .5"/>')
 
-    kp = {"j1": 1500, "j2": 3000, "j3": 2000, "j4": 600, "j5": 400}
-    act = "".join(f'<position name="{a}_{j}" joint="{a}_{j}" kp="{kp[j]}" dampratio="1" ctrllimited="false"/>'
-                  for a in ("p", "h") for j in ARM_JOINTS)
-    tc = 5 * cfg.timestep
-    soft = f'active="false" solref="{tc} 1" solimp="0.95 0.99 0.0005"'
-    eq = "".join(f'<connect name="seal{k}" body1="cup" body2="cherry{k}" anchor="0 0 0.004" {soft}/>'
-                 for k in range(n_fruit))
-    eq += "".join(f'<connect name="grip{j}" body1="h_tool" body2="seg{j}" anchor="0 0 0.03" {soft}/>'
-                  for j in range(n_seg))
+    act = arm_actuators_xml()
+    eq = seal_grip_xml(cfg, n_fruit, n_seg)
     asset = ('<texture name="soil" type="2d" builtin="flat" rgb1=".38 .28 .18" rgb2=".3 .22 .14" '
              'mark="random" random="0.15" markrgb=".25 .2 .12" width="256" height="256"/>'
              '<material name="soil" texture="soil" texrepeat="12 12"/>')
@@ -280,6 +293,7 @@ class Arm:
         self.lo, self.hi = model.jnt_range[jid, 0], model.jnt_range[jid, 1]
         self.act = np.array([model.actuator(f"{prefix}_{j}").id for j in ARM_JOINTS])
         self.tip = model.site(f"{prefix}_tip").id
+        self.shoulder = model.body(f"{prefix}_l2").id
         self.q_cmd = np.zeros(len(ARM_JOINTS))
         self.q_home = self.q_ready = None
 
@@ -293,9 +307,10 @@ class Picker:
         # constraint per fruit.
         n = len(build_scene(branch=branch, rng=np.random.default_rng(seed), stages=stages).stages)
         rng = np.random.default_rng(seed)
-        asset, world, sections = robot_xml(cfg, n, branch.n_nodes)
+        asset, world, sections = self._robot_xml(cfg, n, branch.n_nodes)
         self.info = build_scene(branch=branch, rng=rng, timestep=cfg.timestep, extra_asset=asset,
-                                extra_world=world, extra_sections=sections, stages=stages)
+                                extra_world=world, extra_sections=sections, stages=stages,
+                                **self._scene_kwargs())
         self.thresholds = sample_thresholds(self.info.stages, rng, cv)
         m = self.model = mujoco.MjModel.from_xml_string(self.info.xml)
         self.data = mujoco.MjData(m)
@@ -319,11 +334,10 @@ class Picker:
         self.records = []
         self.blocked = 0
         self.renderer = None
-        # Parked poses out of the cameras' view, and reaching poses as IK seeds.
-        self.cup.q_home = self._solve(self.cup, BASKET + [0, 0, 0.12], [0, 0, -1], [-1.2, -0.6, -1.8, -0.6, 0])
-        self.claw.q_home = self._solve(self.claw, [-0.36, -0.32, 0.36], [0, 0, -1], [1.4, -0.9, -1.2, -0.6, 0])
-        self.cup.q_ready = self._solve(self.cup, [0.2, -0.12, 0.98], [0, 0.9, -0.44], [0, -0.4, -1.0, -0.5, 0])
-        self.claw.q_ready = self._solve(self.claw, [0.12, -0.08, 0.95], [0, 1, 0], [0, -0.4, -1.0, -0.5, 0])
+        self.basket = m.site("basket").id
+        self._initial_state()
+        mujoco.mj_forward(m, self.data)
+        self._solve_poses()
         for arm in (self.cup, self.claw):
             arm.q_cmd = arm.q_home.copy()
             self.data.qpos[arm.q] = arm.q_home
@@ -331,8 +345,30 @@ class Picker:
         mujoco.mj_forward(m, self.data)
         self.front0 = self.data.xpos[self.fruit_body][:, 1] < self.data.xpos[self.seg_body[0]][1]
 
+    # -- hooks a robot on a moving body overrides ----------------------------
+    def _robot_xml(self, cfg, n_fruit, n_seg):
+        return robot_xml(cfg, n_fruit, n_seg)
+
+    def _scene_kwargs(self):
+        return {}
+
+    def _initial_state(self):
+        pass
+
+    def _pre_step(self):
+        pass
+
+    def _solve_poses(self):
+        """Parked poses out of the cameras' view, and reaching poses as IK seeds."""
+        self.cup.q_home = self._solve(self.cup, self.data.site_xpos[self.basket] + [0, 0, 0.12], [0, 0, -1],
+                                      [-1.2, -0.6, -1.8, -0.6, 0])
+        self.claw.q_home = self._solve(self.claw, [-0.36, -0.32, 0.36], [0, 0, -1], [1.4, -0.9, -1.2, -0.6, 0])
+        self.cup.q_ready = self._solve(self.cup, [0.2, -0.12, 0.98], [0, 0.9, -0.44], [0, -0.4, -1.0, -0.5, 0])
+        self.claw.q_ready = self._solve(self.claw, [0.12, -0.08, 0.95], [0, 1, 0], [0, -0.4, -1.0, -0.5, 0])
+
     # -- simulation -------------------------------------------------------
     def step(self):
+        self._pre_step()
         mujoco.mj_step(self.model, self.data)
         self.det.update()
         self._suction_update()
@@ -419,7 +455,7 @@ class Picker:
         """Close the claw on the wood inboard of the fruit. False if it can't."""
         if not self.cfg.hold_branch or det.hold is None:
             return False
-        shoulder = np.array(self.cfg.hold_base) + [0, 0, 0.12]
+        shoulder = self.data.xpos[self.claw.shoulder].copy()
         along = det.branch_dir
         axis = det.hold - shoulder
         axis = _unit(axis - np.dot(axis, along) * along)  # square onto the branch
@@ -752,14 +788,21 @@ class Picker:
         return rec
 
     def run(self, settle=0.6, max_picks=80):
+        self.status = "Settling"
+        self.hold(settle)
+        self.pick_all(max_picks)
+        self.status = "Done"
+        self.move_joints(self.cup, self.cup.q_home, 1.0)
+        self.hold(0.5)
+        return self.summary()
+
+    def pick_all(self, max_picks=80):
         """Look, take the best-seen red fruit with a clear path, repeat.
 
         Both arms park out of the cameras' view before every look: each pick
         changes the branch (it springs up as it loses fruit), so an old
         picture would be stale.
         """
-        self.status = "Settling"
-        self.hold(settle)
         # Estimated centres of fruit already tried and failed; not tried twice.
         # Centres, not surfaces: the two eyes see opposite faces of a fruit.
         failed = []
@@ -784,10 +827,6 @@ class Picker:
             rec = self.pick(det, n)
             if rec.outcome not in ("picked", "wrong_fruit"):
                 failed.append(det.centre)
-        self.status = "Done"
-        self.move_joints(self.cup, self.cup.q_home, 1.0)
-        self.hold(0.5)
-        return self.summary()
 
     def summary(self):
         stages = np.array(self.info.stages)
@@ -818,6 +857,6 @@ class Picker:
         }
 
     def fruit_in_basket(self):
-        p = self.data.xpos[self.fruit_body]
-        return (np.abs(p[:, 0] - BASKET[0]) < 0.075) & (np.abs(p[:, 1] - BASKET[1]) < 0.075) & \
-               (p[:, 2] < BASKET[2] + 0.04)
+        d = self.data
+        local = (d.xpos[self.fruit_body] - d.site_xpos[self.basket]) @ d.site_xmat[self.basket].reshape(3, 3)
+        return (np.abs(local[:, 0]) < 0.075) & (np.abs(local[:, 1]) < 0.075) & (local[:, 2] < 0.04)
