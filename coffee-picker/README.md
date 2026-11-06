@@ -208,11 +208,12 @@ forest and pasture, so PROCAFE farm boundaries would sharpen this.
    the belt. Keeping the body level or leaning lifts that to 66% at grip 0.8.
    This is the most important design choice.
 2. **Then foot grip sets the ceiling.** No leg design beats the friction
-   between foot and soil. With grip 0.5 every design stops at 40% grade (36%
-   of the belt); at 0.8, 60% (66%); at 1.2, 80–100% (88–96%). Feet that bite
-   into soil, like a crab's pointed tips, are worth more than any layout. The
-   real grip is unmeasured; field protocol item 4b measures it with a
-   weighted foot and the force gauge.
+   between foot and soil. On this 20%-step grid, every design stops at 40%
+   grade with grip 0.5 (36% of the belt), 60% with 0.8 (66%), and 80–100%
+   with 1.2 (88–96%). The finer sweep below raises those numbers for the
+   recommended design. Feet that bite into soil, like a crab's pointed tips,
+   are worth more than any layout. The real grip is unmeasured; field
+   protocol item 4b measures it with a weighted foot and the force gauge.
 3. **The deep footprint is the one that can carry a load.** The classic
    footprint reaches the steepest ground empty, but with 2–4 cm of stability
    margin. A full basket on its downhill side tips it by 40%. The deep
@@ -220,12 +221,39 @@ forest and pasture, so PROCAFE farm boundaries would sharpen this.
    at grip 1.2, basket and all.
 4. **Joints peak at 20–35 N m** across the walkable cases.
 
-The simple gait controller falls one grade step short of the ideal (slides
-when grade passes grip), because stiff legs share the downhill load
-unevenly. Force-controlled legs should close that gap. Details, the corrected
-tipping physics and what is still untested are in
-[`docs/platform-crab.md`](docs/platform-crab.md); full tables are in
-[`results/walk_summary.md`](results/walk_summary.md).
+### Do the legs need force control?
+
+![Stiff servos vs force-shared feet vs the grip limit](results/grip_control.png)
+
+Stiff joint servos let the feet share the downhill load unevenly, so the
+robot slides before the friction limit (grade = grip) says it must. I tested
+the fix in [`scripts/grip_sweep.py`](scripts/grip_sweep.py), on the
+recommended crab (deep footprint, leaning body) in 5%-grade steps. The fix is
+legs that work out the push the body needs and split it so every planted foot
+pushes along it, each using the same share of its grip. Load is eased on and
+off at each step, and the push is kept inside 90% of the friction cone.
+
+| Foot grip | Stiff servos | Force-shared feet | Ideal |
+|---|---|---|---|
+| 0.5 | 45% grade → 43% of belt | 45% → 43% | 50% → 51% |
+| 0.8 | 65% → 72% | 70% → 78% | 80% → 88% |
+| 1.2 | 95% → 95% | 100% → 96% | 120% → 98% |
+
+- **Stiff servos already reach 80–90% of the grip limit.** The 20%-step grid
+  above understated them.
+- **Force sharing buys about 5% more grade and halves the downhill drift**
+  (3–7 cm against 6–10 cm per metre). It costs roughly double the peak joint
+  torque (35–57 N m against 20–25 N m) and needs joint motors that can be
+  torque-controlled, which cost more. Unless grip turns out to be low, that
+  money is better spent on feet.
+- Getting the force controller to work at all needed one safeguard. Asking
+  for more push than the grip allows, to win back a small drift, made every
+  foot slip at once.
+
+Details, the corrected tipping physics and what is still untested are in
+[`docs/platform-crab.md`](docs/platform-crab.md). Full tables are in
+[`results/walk_summary.md`](results/walk_summary.md) and
+[`results/grip_summary.md`](results/grip_summary.md).
 
 ## The whole robot on the median slope
 
@@ -306,7 +334,7 @@ Every number in `coffeesim/params.py` names its source or is marked
 
 ```bash
 pip install -r requirements.txt
-python -m pytest -q tests                  # 18 tests, ~1 min
+python -m pytest -q tests                  # 21 tests, ~1.5 min
 python scripts/run_sweep.py                # 240 runs, ~7 min on 4 cores
 python scripts/summarize.py                # results/summary.md + tradeoff.png
 MUJOCO_GL=osmesa python scripts/render_pass.py   # results/comb_pass.png (headless needs libosmesa6)
@@ -314,6 +342,7 @@ MUJOCO_GL=osmesa python scripts/pick_demo.py     # single-fruit picker video, ~2
 python scripts/pr_slopes.py                      # coffee-belt slopes from USGS (needs rasterio, network)
 python scripts/walk_sweep.py                     # 288 walking runs, ~5 min on 4 cores
 python scripts/walk_summary.py                   # results/walk_summary.md + walk_coverage.png
+python scripts/grip_sweep.py                     # stiff vs force-shared legs near the grip limit, ~7 min
 MUJOCO_GL=osmesa python scripts/walk_demo.py     # two crabs on a 50% slope, ~1 min
 MUJOCO_GL=osmesa python scripts/field_demo.py    # whole robot: walk, pick, walk on; ~20 min
 ```
@@ -345,10 +374,10 @@ MUJOCO_GL=osmesa python scripts/field_demo.py    # whole robot: walk, pick, walk
    branches during the Puerto Rico harvest. It measures what the simulation
    cannot: leaf and bud damage, and lateral pull-off. A dial-a-force comb
    costs little and answers the main question directly.
-3. **Platform.** First pass done: the crab-hexapod walking smooth slopes, and
-   the whole robot walking and picking on the median slope (above). Next:
-   rough ground from 1 m lidar of PROCAFE farms, force-controlled legs, and
-   the same tests for a quadruped and a tracked carrier
+3. **Platform.** First pass done: the crab-hexapod walking smooth slopes,
+   stiff against force-controlled legs, and the whole robot walking and
+   picking on the median slope (above). Next: rough ground from 1 m lidar of
+   PROCAFE farms, and the same tests for a quadruped and a tracked carrier
    (`docs/platform-crab.md`).
 4. **Perception.** Branch and ripeness detection under canopy shade, trained
    on the field photos from the protocol.

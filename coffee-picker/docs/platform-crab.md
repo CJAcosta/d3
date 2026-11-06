@@ -93,13 +93,19 @@ slope; tripod or wave gait; grades 0–100%; foot grip 0.5, 0.8 or 1.2
 1. **Keeping the body level matters more than the footprint.** A tilted
    classic crab walks less than 11% of the coffee belt at any grip. Level or
    leaning, the same crab reaches 66% of the belt at grip 0.8.
-2. **Grip sets the ceiling.**
+2. **Grip sets the ceiling.** For the recommended crab, in 5%-grade steps
+   (`scripts/grip_sweep.py`):
 
-   | Grip | Best design | Share of belt |
-   |---|---|---|
-   | 0.5 | 40% grade | 36% |
-   | 0.8 | 60% grade | 66% |
-   | 1.2 | 80–100% grade | 88–96% |
+   | Grip | Stiff servos | Force-shared feet | Ideal |
+   |---|---|---|---|
+   | 0.5 | 45% grade, 43% of belt | 45%, 43% | 50%, 51% |
+   | 0.8 | 65%, 72% | 70%, 78% | 80%, 88% |
+   | 1.2 | 95%, 95% | 100%, 96% | 120%, 98% |
+
+   The first 20%-step pass understated the stiff servos (40/60/80–100%
+   grade). Force-shared feet add about 5% grade and halve the drift, at
+   about twice the peak joint torque and the cost of torque-controllable
+   motors: a modest gain next to grip itself.
 
    Feet that bite into soil, which is what a crab's pointed tips do, are worth
    more than any leg layout. The real grip of rubber pads and spikes on
@@ -116,6 +122,8 @@ slope; tripod or wave gait; grades 0–100%; foot grip 0.5, 0.8 or 1.2
 So the revised design rule: hold the body level or leaning, never tilted
 with the ground; spread the feet front to back as well as sideways (deep), so
 there is margin for arms and a basket; and give the feet tips that bite.
+Plain stiff joint servos are enough; force-controlled legs are a refinement,
+not a requirement.
 
 Limits of this first pass:
 
@@ -157,8 +165,6 @@ So on this slope the arms are not what limits the robot; walking is.
 
 - Rough ground: steps, roots, terraces and soft soil, from 1 m lidar profiles
   of actual PROCAFE farms.
-- A controller that shares foot forces within each foot's grip, which should
-  close the gap to the ideal (grade = grip).
 - Walking with a load that shifts as the basket fills. Arms working while
   the robot stands on the slope is done: see below.
 - Against the same terrain: a quadruped with one arm (DEEP Robotics' X30 or
