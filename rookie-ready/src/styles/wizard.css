@@ -1340,6 +1340,34 @@ select:disabled {
   gap: 0.6rem;
 }
 
+.rc-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgb(19 35 58 / 75%);
+}
+.rc-modal-box {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: center;
+  max-width: 22rem;
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  background: var(--card);
+  text-align: center;
+}
+.rc-modal-box img {
+  width: 100%;
+  border-radius: 12px;
+  -webkit-touch-callout: default;
+}
+.rc-modal-box p {
+  margin: 0;
+}
+
 .celebrate {
   position: fixed;
   inset: 0;

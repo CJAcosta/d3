@@ -88,6 +88,13 @@ Paste your provider's form action URL into `newsletter.action` (Kit/ConvertKit, 
 The signup box then shows on every plan ("Get a pre-season reminder"). The best email for this site is a pre-season
 reminder in January/February, when parents actually buy.
 
+## Shareable preview (one file)
+
+`npm run build:preview` writes `dist-preview/rookie-ready-preview.html`: the gear guide (wizard, plan and
+rookie card) as a single self-contained HTML file with CSS and JS inlined. It works inside sandboxed
+preview frames such as a claude.ai artifact: guide links stay in place, the card saves through the host's
+download prompt (or a press-and-hold fallback), and Print/share-link buttons that can't work there are hidden.
+
 ## Deploying
 
 It's a static site, so any static host works (Cloudflare Pages, Netlify, Vercel, GitHub Pages).

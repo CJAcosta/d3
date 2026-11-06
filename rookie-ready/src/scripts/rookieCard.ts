@@ -5,6 +5,7 @@
 import { CARD_COLORS, cardFacts, cleanCardText, cleanNumber, positionLabel, seasonYear } from '../lib/card';
 import { svgIcon } from '../lib/icons';
 import type { Plan } from '../lib/plan';
+import { framed } from './env';
 import { track } from './track';
 
 const KEY = 'rr:v1:card';
@@ -341,6 +342,49 @@ function drawCard(canvas: HTMLCanvasElement, s: CardState, plan: Plan, photo: HT
 }
 
 // ---------------------------------------------------------------------------
+// Saving
+// ---------------------------------------------------------------------------
+
+declare global {
+  interface Window {
+    /** Optional host hook (e.g. a preview frame) that saves a file. Returns true if handled. */
+    rrSaveFile?: (blob: Blob, filename: string) => Promise<boolean>;
+  }
+}
+
+/** Where downloads are blocked (embeds, some in-app browsers), show the card big so it can be saved by hand. */
+function showCardToSave(blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const wrap = document.createElement('div');
+  wrap.className = 'rc-modal';
+  wrap.setAttribute('role', 'dialog');
+  wrap.setAttribute('aria-modal', 'true');
+  wrap.setAttribute('aria-label', 'Save your rookie card');
+  wrap.innerHTML = `<div class="rc-modal-box"><img src="${url}" alt="Rookie card"><p><strong>Press and hold the card</strong> (or right-click it) and choose “Save image.”</p><button type="button" class="btn">Done</button></div>`;
+  const close = () => {
+    wrap.remove();
+    URL.revokeObjectURL(url);
+  };
+  wrap.addEventListener('click', (e) => {
+    if (e.target === wrap || (e.target as HTMLElement).closest('button')) close();
+  });
+  document.body.append(wrap);
+  wrap.querySelector('button')?.focus();
+}
+
+async function saveCard(blob: Blob, filename: string) {
+  if (window.rrSaveFile && (await window.rrSaveFile(blob, filename).catch(() => false))) return;
+  if (framed) return showCardToSave(blob);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 
@@ -427,19 +471,13 @@ export function mountRookieCard(root: HTMLElement, plan: Plan) {
     drawCard(canvas, state, plan, photo);
     const blob = await toBlob();
     if (!blob) return;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fileName();
-    document.body.append(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    await saveCard(blob, fileName());
     track('Rookie Card Downloaded', { photo: !!photo, number: state.number !== '' });
   });
 
   const shareBtn = section.querySelector<HTMLButtonElement>('[data-rc-share]')!;
   try {
-    shareBtn.hidden = !navigator.canShare?.({ files: [new File([''], 'card.png', { type: 'image/png' })] });
+    shareBtn.hidden = framed || !navigator.canShare?.({ files: [new File([''], 'card.png', { type: 'image/png' })] });
   } catch {
     shareBtn.hidden = true;
   }

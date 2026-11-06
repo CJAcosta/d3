@@ -12,6 +12,7 @@ import { PRIORITY_LABEL, buildPlan, cleanName, decodeAnswers, encodeAnswers, typ
 import { CERT_INFO, batFor, batCertFor, dropLabel, frac, gloveFor, hatSize, pantsFor, stageFor, typicalForAge } from '../lib/sizing';
 import type { Answers, BatSide, Budget, Experience, Hand, Have, Position, Priority, Protection, Team } from '../lib/types';
 import { celebrate } from './celebrate';
+import { framed, nav } from './env';
 import { mountRookieCard, rookieCardSection } from './rookieCard';
 import { track } from './track';
 
@@ -536,8 +537,8 @@ function renderResults(root: HTMLElement, plan: Plan, opts: { shared: boolean })
     <ul class="chips">${plan.chips.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
     <div class="res-actions no-print">
       <button type="button" class="btn btn-red" data-act="goto-card">${svgIcon('star')} Make a rookie card</button>
-      <button type="button" class="btn btn-ghost" data-act="print">${svgIcon('print')} Print / save PDF</button>
-      <button type="button" class="btn btn-ghost" data-act="share">${svgIcon('link')} Share with family</button>
+      ${framed ? '' : `<button type="button" class="btn btn-ghost" data-act="print">${svgIcon('print')} Print / save PDF</button>
+      <button type="button" class="btn btn-ghost" data-act="share">${svgIcon('link')} Share with family</button>`}
       <button type="button" class="btn btn-ghost" data-act="edit">${svgIcon('edit')} Edit answers</button>
       <button type="button" class="linkish" data-act="restart">Start over</button>
     </div>
@@ -674,6 +675,7 @@ export function initWizard() {
   let current: StepId = 'intro';
   let started = false;
   let currentPlan: Plan | null = null;
+  let currentAnswers: Answers | null = null;
 
   results.addEventListener('change', (e) => {
     const input = e.target as HTMLInputElement;
@@ -744,7 +746,7 @@ export function initWizard() {
     if (step !== 'intro') trivia.innerHTML = `<strong>Dugout trivia:</strong> ${esc(TRIVIA[(idx - 1) % TRIVIA.length])}`;
     personalize();
     renderPreview();
-    if (push) history.pushState({ rr: step }, '', location.pathname);
+    if (push) nav.push({ rr: step }, location.pathname);
     const fs = steps.find((f) => f.dataset.step === step)!;
     const heading = $<HTMLElement>('.q, h1', fs);
     if (heading && step !== 'intro') {
@@ -772,12 +774,13 @@ export function initWizard() {
   const showPlan = (answers: Answers, { push = true, shared = false } = {}) => {
     const plan = buildPlan(answers);
     currentPlan = plan;
+    currentAnswers = answers;
     wizard.hidden = true;
     results.hidden = false;
     renderResults(results, plan, { shared });
     const url = `${location.pathname}?${encodeAnswers(answers)}`;
-    if (push) history.pushState({ rr: 'results' }, '', url);
-    else history.replaceState({ rr: 'results' }, '', url);
+    if (push) nav.push({ rr: 'results' }, url);
+    else nav.replace({ rr: 'results' }, url);
     document.title = `${plan.answers.name ? `${plan.whose} gear plan` : 'Your gear plan'} | ${site.name}`;
     window.scrollTo({ top: 0 });
     $<HTMLElement>('[data-res-title]', results)?.focus({ preventScroll: true });
@@ -818,7 +821,10 @@ export function initWizard() {
   form.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     if (t.closest('[data-next]')) next();
-    else if (t.closest('[data-back]')) history.back();
+    else if (t.closest('[data-back]')) {
+      if (nav.ok) history.back();
+      else show(STEPS[Math.max(0, STEPS.indexOf(current) - 1)], { push: false });
+    }
   });
   form.addEventListener('input', (e) => {
     personalize();
@@ -852,7 +858,7 @@ export function initWizard() {
     const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-act]');
     if (!btn) return;
     const act = btn.dataset.act;
-    const answers = decodeAnswers(location.search);
+    const answers = currentAnswers ?? decodeAnswers(location.search);
     if (act === 'print') {
       track('Plan Printed', {});
       window.print();
@@ -890,7 +896,7 @@ export function initWizard() {
       });
       $$<HTMLInputElement | HTMLSelectElement>('select, input[name="weight"]', form).forEach((el) => (el.disabled = false));
       $('[data-resume]', form)!.hidden = true;
-      history.replaceState({ rr: 'intro' }, '', location.pathname);
+      nav.replace({ rr: 'intro' }, location.pathname);
       show('intro', { push: false });
     } else if (act === 'goto-card') {
       $('#rookie-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -943,6 +949,6 @@ export function initWizard() {
     if (saved.age != null) $('[data-resume]', form)!.hidden = false;
   }
 
-  history.replaceState({ rr: 'intro' }, '', location.pathname);
+  nav.replace({ rr: 'intro' }, location.pathname);
   show('intro', { push: false });
 }
