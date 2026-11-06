@@ -138,17 +138,25 @@ def legs_xml(d, mu, foot_bits=""):
     return "".join(legs)
 
 
-def leg_actuators_xml():
+# Torque limit of a force-controlled leg joint [N m]. Generous: the sweep
+# reports what the controller actually asked for.
+LEG_TORQUE = 120.0
+
+
+def leg_actuators_xml(control="position"):
+    if control == "force":
+        return "".join(f'<motor name="{n}_{j}" joint="{n}_{j}" ctrlrange="-{LEG_TORQUE} {LEG_TORQUE}"/>'
+                       for n in LEGS for j in "cft")
     return "".join(f'<position name="{n}_{j}" joint="{n}_{j}" kp="{LEG_KP[j]}" dampratio="1"/>'
                    for n in LEGS for j in "cft")
 
 
-def crab_xml(d, grade, mu, timestep=1e-3):
+def crab_xml(d, grade, mu, timestep=1e-3, control="position"):
     theta = math.atan(grade)
     bx, by, bz = (s / 2 for s in d.body_size)
     payload = (f'<geom type="box" pos="{_f(d.payload_pos)}" size="0.07 0.07 0.04" mass="{d.payload}" '
                f'rgba=".55 .4 .25 1" contype="0" conaffinity="0"/>' if d.payload > 0 else "")
-    act = leg_actuators_xml()
+    act = leg_actuators_xml(control)
     return f"""
 <mujoco model="crab_walker">
   <compiler angle="radian" autolimits="true"/>
@@ -244,6 +252,51 @@ def stability_margin(com_xy, feet_xy):
     return float(best)
 
 
+def share_force(F, M, feet, com, floor=0.03, weights=None):
+    """Split the push and twist the body needs over the planted feet.
+
+    Every foot pushes along F itself, so every foot uses the same share of
+    its grip (tangential over normal force is equal everywhere): the best any
+    split can do, and the robot slides only when the slope beats the grip.
+    The shares are the least-even-split that also makes the moment M about
+    the centre of mass; a share that would go below `floor` is held there,
+    which leaves some of M unmade (the body would start to tip). The twist
+    about F's own axis cannot come from parallel forces and is left to the
+    joints' own stiffness. `weights` (0..1 per foot) shrink the share of a
+    foot that has just landed or is about to lift, so load moves between
+    feet gradually instead of jumping at each step. Returns the ground's
+    force on each foot.
+    """
+    k = len(feet)
+    r = np.asarray(feet, float) - com
+    u = F / np.linalg.norm(F)
+    # Centre of pressure the moment asks for: c x F = M, with c across F.
+    c = np.cross(F, M) / float(np.dot(F, F))
+    e1 = np.cross(u, [1.0, 0, 0] if abs(u[0]) < 0.9 else [0, 1.0, 0])
+    e1 /= np.linalg.norm(e1)
+    e2 = np.cross(u, e1)
+    A = np.vstack([np.ones(k), r @ e1, r @ e2])
+    b = np.array([1.0, c @ e1, c @ e2])
+    w = np.ones(k) if weights is None else np.clip(np.asarray(weights, float), 1e-3, 1.0)
+    share = w / w.sum()
+    free = np.ones(k, bool)
+    for _ in range(k):
+        Af, wf = A[:, free], w[free]
+        rest = b - A[:, ~free] @ share[~free]
+        guess = rest[0] * wf / wf.sum()
+        # Weighted least change: min sum (a - guess)^2 / w subject to Af a = rest.
+        AW = Af * wf
+        share[free] = guess + wf * (np.linalg.pinv(AW @ Af.T) @ (rest - Af @ guess) @ Af)
+        low = free & (share < floor * w)
+        if not low.any():
+            break
+        share[low] = floor * w[low]
+        free &= ~low
+        if not free.any():
+            break
+    return [a * F for a in share]
+
+
 class Footwork:
     """Footholds and swing paths for a gait, against a planned body path.
 
@@ -270,6 +323,21 @@ class Footwork:
     @property
     def stance(self):
         return {n for n in LEGS if self.lifted[n] is None}
+
+    def load_weight(self, n, t, ramp):
+        """0..1: how settled leg n is in its stance; ramps up over `ramp`
+        seconds after landing and down over `ramp` before lifting."""
+        if self.lifted[n] is not None:
+            return 0.0
+        if self.t0 is None or t < self.t0 or not self.new_swings:
+            return 1.0
+        g = self.gait
+        ph = ((t - self.t0) / g.period - g.offsets[n]) % 1.0
+        since = (ph - (1 - g.duty)) * g.period if ph >= 1 - g.duty else g.duty * g.period
+        until = (1.0 - ph) * g.period
+        if math.floor((t - self.t0) / g.period - g.offsets[n]) < 0:
+            until = (g.offsets[n] - (t - self.t0) / g.period) * g.period  # not lifted yet this walk
+        return float(np.clip(min(since, until) / ramp, 0.05, 1.0))
 
     def update(self, t, plan):
         g, feet = self.gait, self.feet
@@ -301,9 +369,24 @@ class Footwork:
         return feet
 
 
+# Force control gains. Body: about a 2 Hz, critically damped spring for 30 kg
+# and its rotational inertia. Legs: stiff joint servos for a swinging leg,
+# a tenth of that for a planted one, which takes its load as force instead.
+BODY_KP, BODY_KD, BODY_KR, BODY_KW = 3000.0, 600.0, 300.0, 40.0
+# The body's push may use at most this share of the feet's grip. Asking for
+# more to correct a downhill drift only makes every foot slip at once.
+GRIP_USE = 0.9
+SWING_KP = {"c": 800.0, "f": 2000.0, "t": 2000.0}
+SWING_KD = {"c": 18.0, "f": 24.0, "t": 16.0}
+STANCE_KP = {"c": 80.0, "f": 200.0, "t": 200.0}
+STANCE_KD = {"c": 6.0, "f": 8.0, "t": 5.0}
+
+
 class Walker:
     def __init__(self, layout="deep", gait="wave", posture="level", grade=0.0, mu=0.8, payload=0.0,
-                 speed=0.04, design=None):
+                 speed=0.04, design=None, control="position"):
+        """`control`: "position" (stiff joint servos, as in the sweep) or
+        "force" (planted feet share the body's load evenly against grip)."""
         if posture not in POSTURES:
             raise ValueError(f"posture must be one of {POSTURES}")
         d = design or CrabDesign()
@@ -313,7 +396,8 @@ class Walker:
         self.d, self.gait, self.posture, self.grade, self.mu = d, GAITS[gait], posture, grade, mu
         self.layout_name, self.speed = layout, speed
         self.theta = math.atan(grade)
-        self.model = mujoco.MjModel.from_xml_string(crab_xml(d, grade, mu))
+        self.control = control
+        self.model = mujoco.MjModel.from_xml_string(crab_xml(d, grade, mu, control=control))
         self.data = mujoco.MjData(self.model)
         m = self.model
         self.root = m.body("crab").id
@@ -324,6 +408,7 @@ class Walker:
         jid = {n: [m.joint(f"{n}_{j}").id for j in "cft"] for n in LEGS}
         self.lo = {n: m.jnt_range[jid[n], 0] for n in LEGS}
         self.hi = {n: m.jnt_range[jid[n], 1] for n in LEGS}
+        self.dofs = {n: m.jnt_dofadr[jid[n]] for n in LEGS}
         self.ground_geom = m.geom("ground").id
 
     # -- plan -------------------------------------------------------------
@@ -374,6 +459,54 @@ class Walker:
             self.data.ctrl[self.act[n]] = clipped
         return missed
 
+    def force_control(self, p, R, feet, stance, v_plan, weights=None):
+        """Torques for force control; returns the legs that missed their
+        targets, as set_joints does."""
+        m, d = self.model, self.data
+        missed, q_t = set(), {}
+        for n in LEGS:
+            q, ok = leg_ik(self.d, n, R.T @ (feet[n] - p))
+            q_t[n] = np.clip(q, self.lo[n], self.hi[n])
+            if not ok or np.abs(q_t[n] - q).max() > 1e-3:
+                missed.add(n)
+        vel = np.zeros(6)
+        mujoco.mj_objectVelocity(m, d, mujoco.mjtObj.mjOBJ_BODY, self.root, vel, 0)
+        Rb = d.xmat[self.root].reshape(3, 3)
+        F = (-m.body_subtreemass[self.root] * m.opt.gravity
+             + BODY_KP * (p - d.xpos[self.root]) + BODY_KD * (v_plan - vel[3:]))
+        # Keep the push inside the friction cone (the controller is told the
+        # grip; a real one would have to estimate it).
+        n = self.normal
+        F_n = float(np.dot(F, n))
+        F_t = F - F_n * n
+        cap = GRIP_USE * self.mu * max(F_n, 0.0)
+        if np.linalg.norm(F_t) > cap:
+            F = F_n * n + F_t * (cap / np.linalg.norm(F_t))
+        rot_err = 0.5 * sum(np.cross(Rb[:, i], R[:, i]) for i in range(3))
+        M = BODY_KR * rot_err - BODY_KW * vel[:3]
+        planted = [n for n in LEGS if n in stance]
+        push = {}
+        if planted:
+            forces = share_force(F, M, [d.site_xpos[self.tip[n]] for n in planted], d.subtree_com[self.root],
+                                 weights=[weights[n] for n in planted] if weights else None)
+            push = dict(zip(planted, forces))
+        jac = np.zeros((3, m.nv))
+        for n in LEGS:
+            dofs = self.dofs[n]
+            q, qd = d.qpos[self.qadr[n]], d.qvel[dofs]
+            if n in push:
+                mujoco.mj_jacSite(m, d, jac, None, self.tip[n])
+                kp = np.array([STANCE_KP[j] for j in "cft"])
+                kd = np.array([STANCE_KD[j] for j in "cft"])
+                tau = d.qfrc_bias[dofs] - jac[:, dofs].T @ push[n]
+            else:
+                kp = np.array([SWING_KP[j] for j in "cft"])
+                kd = np.array([SWING_KD[j] for j in "cft"])
+                tau = d.qfrc_bias[dofs].copy()
+            tau += kp * (q_t[n] - q) - kd * qd
+            d.ctrl[self.act[n]] = np.clip(tau, -LEG_TORQUE, LEG_TORQUE)
+        return missed
+
     def run(self, distance=1.0, settle=1.0, on_frame=None, frame_dt=1 / 30, linger=0.0):
         """Walk `distance` along the contour. `linger` keeps simulating (servos
         frozen) that long after a fall, so a film shows it."""
@@ -402,8 +535,14 @@ class Walker:
             t = i * dt
             p, R, tilt = plan(t)
             feet = steps_feet.update(t, plan)
+            if self.control == "force":
+                v_plan = np.array([self.speed if t >= settle else 0.0, 0.0, 0.0])
+                weights = {n: steps_feet.load_weight(n, t, 0.15) for n in LEGS}
+                missed = self.force_control(p, R, feet, steps_feet.stance, v_plan, weights)
+            else:
+                missed = self.set_joints(p, R, feet)
             # Only count it when a supporting leg cannot reach its foothold.
-            if self.set_joints(p, R, feet) & steps_feet.stance:
+            if missed & steps_feet.stance:
                 over += 1
             mujoco.mj_step(m, data)
             if on_frame and data.time >= next_frame:
