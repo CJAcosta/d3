@@ -33,9 +33,12 @@ const jsonLd = [
       <section id="wizard" class="wiz" aria-label="Gear guide questions">
         <div class="wiz-main">
           <div class="wiz-top no-print" hidden data-progress-wrap>
-            <div class="wiz-progress" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-              <span data-progress></span>
+            <div class="basepath" role="progressbar" aria-label="Progress around the bases" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-basepath>
+              <div class="bp-line"><span class="bp-fill"></span></div>
+              {[0, 1, 2, 3, 4].map((b) => <span class={`bp-base ${b === 0 || b === 4 ? 'bp-home' : ''}`} style={`left:${b * 25}%`} data-base={b}></span>)}
+              <span class="bp-runner"><Icon name="baseball" /></span>
             </div>
+            <div class="bp-labels" aria-hidden="true"><span>Home</span><span>1st</span><span>2nd</span><span>3rd</span><span>Home</span></div>
             <p class="wiz-count" data-count></p>
           </div>
 
@@ -53,6 +56,7 @@ const jsonLd = [
                     Hi! I’ll walk you through this one question at a time and explain why each one matters. At the end you’ll have a gear list with every size
                     filled in, what’s required, and what you can skip.
                   </p>
+                  <p><strong>Grab your rookie!</strong> A few of these are more fun together, and at the end they get to make their own rookie card.</p>
                 </div>
               </div>
               <div class="field">
@@ -311,6 +315,7 @@ const jsonLd = [
               </div>
             </fieldset>
           </form>
+          <p class="trivia" hidden data-trivia></p>
         </div>
 
         <aside class="preview no-print" aria-label="Sizes so far" hidden data-preview>

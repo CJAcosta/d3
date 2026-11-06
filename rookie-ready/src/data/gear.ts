@@ -11,6 +11,8 @@ import type { Budget, GearId } from '../lib/types';
 export interface GearInfo {
   id: GearId;
   name: string;
+  /** Ballpark slang, shown for fun next to the name. */
+  nickname?: string;
   icon: string;
   why: string;
   fitCheck: string[];
@@ -31,6 +33,7 @@ export const gear: Record<GearId, GearInfo> = {
   glove: {
     id: 'glove',
     name: 'Fielding glove',
+    nickname: 'the leather',
     icon: 'glove',
     why: 'The one piece of gear every player needs, at every practice. A glove that fits is the difference between catching the ball and being scared of it.',
     fitCheck: [
@@ -58,6 +61,7 @@ export const gear: Record<GearId, GearInfo> = {
   bat: {
     id: 'bat',
     name: 'Bat',
+    nickname: 'the lumber',
     icon: 'bat',
     why: 'Many teams share bats, but a bat that’s the right length and weight for your kid makes hitting much easier, and hitting is what keeps kids in the game.',
     fitCheck: [
@@ -86,6 +90,7 @@ export const gear: Record<GearId, GearInfo> = {
   helmet: {
     id: 'helmet',
     name: 'Batting helmet',
+    nickname: 'the lid',
     icon: 'helmet',
     why: 'Required for every batter and base runner. Teams often have shared helmets, but a shared one that wobbles doesn’t protect, and kids hit more confidently in their own.',
     fitCheck: [
@@ -114,6 +119,7 @@ export const gear: Record<GearId, GearInfo> = {
   cleats: {
     id: 'cleats',
     name: 'Cleats',
+    nickname: 'spikes',
     icon: 'cleat',
     why: 'Grass and dirt are slippery. Cleats help them start, stop and run the bases without falling. Little League asks players to wear cleats at outdoor practices.',
     fitCheck: [
@@ -260,6 +266,7 @@ export const gear: Record<GearId, GearInfo> = {
   catchersgear: {
     id: 'catchersgear',
     name: 'Catcher’s gear set',
+    nickname: 'the tools of ignorance',
     icon: 'mask',
     why: 'Catchers need a helmet with a face mask and throat guard, a chest protector, leg guards, and a cup (boys). Leagues often have a shared set, but one that fits protects better.',
     fitCheck: [

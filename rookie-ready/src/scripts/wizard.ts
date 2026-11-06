@@ -11,6 +11,8 @@ import { SPONSORED_REL } from '../lib/links';
 import { PRIORITY_LABEL, buildPlan, cleanName, decodeAnswers, encodeAnswers, type Plan, type PlanItem } from '../lib/plan';
 import { CERT_INFO, batFor, batCertFor, dropLabel, frac, gloveFor, hatSize, pantsFor, stageFor, typicalForAge } from '../lib/sizing';
 import type { Answers, BatSide, Budget, Experience, Hand, Have, Position, Priority, Protection, Team } from '../lib/types';
+import { celebrate } from './celebrate';
+import { mountRookieCard, rookieCardSection } from './rookieCard';
 import { track } from './track';
 
 const STEPS = ['intro', 'age', 'size', 'hands', 'team', 'position', 'budget', 'extras'] as const;
@@ -19,6 +21,21 @@ type StepId = (typeof STEPS)[number];
 const KEY_DRAFT = 'rr:v1:draft';
 const KEY_DONE = 'rr:v1:done';
 const KEY_GOT = 'rr:v1:got';
+const KEY_CARD = 'rr:v1:card';
+
+/** One bit of dugout trivia per question. */
+const TRIVIA = [
+  'A big-league baseball has 108 double stitches, and every one is sewn by hand.',
+  'Little League started in 1939 in Williamsport, Pennsylvania, with just three teams.',
+  'The first ballplayers caught bare-handed. Gloves didn’t catch on until the 1870s and 1880s.',
+  'Home plate is 17 inches wide, from Little League all the way to the big leagues.',
+  'In Little League Majors the bases are 60 feet apart. In the big leagues, they’re 90.',
+  'Little League pitchers throw from 46 feet away. Big leaguers throw from 60 feet, 6 inches.',
+  'An official baseball weighs about 5 ounces and is about 9 inches around.',
+];
+
+/** Where the runner is after each answered question. */
+const BASE_CALLS = ['Batter up!', 'Running to first', 'Safe at first!', 'Heading for second', 'Safe at second!', 'Rounding third', 'Waved home! Last one'];
 
 interface Draft {
   name: string;
@@ -353,11 +370,11 @@ function previewRows(d: Draft): { label: string; value: string; done: boolean }[
 // Results
 // ---------------------------------------------------------------------------
 
-const GROUPS: { key: Priority | 'covered'; title: string; blurb: string }[] = [
-  { key: 'must', title: 'Must-haves', blurb: 'Get these before the first practice.' },
-  { key: 'recommended', title: 'Recommended', blurb: 'Not required, but most families are glad they got them.' },
-  { key: 'nice', title: 'Nice to have', blurb: 'Totally optional. Wait and see how the season goes.' },
-  { key: 'covered', title: 'Already covered', blurb: 'You have these or the team provides them. Give them a quick fit check.' },
+const GROUPS: { key: Priority | 'covered'; tag: string; title: string; blurb: string }[] = [
+  { key: 'must', tag: 'The starting lineup', title: 'Must-haves', blurb: 'Get these before the first practice.' },
+  { key: 'recommended', tag: 'Off the bench', title: 'Recommended', blurb: 'Not required, but most families are glad they got them.' },
+  { key: 'nice', tag: 'Extra innings', title: 'Nice to have', blurb: 'Totally optional. Wait and see how the season goes.' },
+  { key: 'covered', tag: 'Already in the dugout', title: 'Already covered', blurb: 'You have these or the team provides them. Give them a quick fit check.' },
 ];
 
 function list(items: string[], cls = ''): string {
@@ -390,6 +407,19 @@ function picksHtml(it: PlanItem): string {
     .join('')}</div>`;
 }
 
+const nick = (it: PlanItem) => (it.info.nickname ? ` <span class="nick">a.k.a. “${esc(it.info.nickname)}”</span>` : '');
+
+function batTimer(plan: Plan): string {
+  return `<div class="timer no-print" data-timer>
+    <div class="timer-face" aria-live="polite"><span class="timer-num" data-timer-num>20</span><span class="timer-unit">sec</span></div>
+    <div class="timer-body">
+      <p class="timer-title">Kid challenge: the 20-second bat hold</p>
+      <p class="timer-text" data-timer-text>In the store, have ${esc(plan.who)} hold the bat straight out to the side by the handle. If it dips before the clock hits zero, it’s too heavy.</p>
+      <button type="button" class="btn btn-ghost" data-act="timer">${svgIcon('clock')} <span data-timer-label>Start the clock</span></button>
+    </div>
+  </div>`;
+}
+
 function itemCard(it: PlanItem, plan: Plan, got: Set<string>): string {
   const key = it.covered ? 'covered' : it.priority;
   const badge = it.covered ? 'Already covered' : PRIORITY_LABEL[it.priority];
@@ -417,7 +447,7 @@ function itemCard(it: PlanItem, plan: Plan, got: Set<string>): string {
     return `<article class="item item-covered" id="item-${it.id}">
       <div class="item-head">
         <span class="item-icon">${svgIcon(it.info.icon)}</span>
-        <div class="item-title"><span class="badge badge-covered">${badge}</span><h3>${esc(it.info.name)}</h3>
+        <div class="item-title"><span class="badge badge-covered">${badge}</span><h3>${esc(it.info.name)}${nick(it)}</h3>
         <p class="item-spec">Should be: ${esc(it.headline)}</p></div>
       </div>
       <p class="item-why"><strong>Quick check:</strong> ${esc(it.info.fitCheck[0])}</p>
@@ -430,7 +460,7 @@ function itemCard(it: PlanItem, plan: Plan, got: Set<string>): string {
       <span class="item-icon">${svgIcon(it.info.icon)}</span>
       <div class="item-title">
         <span class="badge badge-${key}">${badge}</span>
-        <h3>${esc(it.info.name)}</h3>
+        <h3>${esc(it.info.name)}${nick(it)}</h3>
         <p class="item-spec">${esc(it.headline)}</p>
       </div>
       <label class="got-it no-print"><input type="checkbox" data-got="${it.id}"${got.has(it.id) ? ' checked' : ''}><span>Got it</span></label>
@@ -438,6 +468,7 @@ function itemCard(it: PlanItem, plan: Plan, got: Set<string>): string {
     <p class="item-why">${esc(it.why)}</p>
     ${specs}
     ${notes}
+    ${it.id === 'bat' ? batTimer(plan) : ''}
     ${picksHtml(it)}
     ${shopButtons(it)}
     ${more}
@@ -463,7 +494,7 @@ function newsletterHtml(plan: Plan): string {
   </div>`;
 }
 
-function updateMeter(root: HTMLElement, plan: Plan) {
+function updateMeter(root: HTMLElement, plan: Plan): boolean {
   const active = plan.items.filter((i) => !i.covered);
   const mustCount = active.filter((i) => i.priority === 'must').length;
   const checked = new Set($$<HTMLInputElement>('input[data-got]:checked', root).map((i) => i.dataset.got!));
@@ -475,8 +506,10 @@ function updateMeter(root: HTMLElement, plan: Plan) {
   if (txt)
     txt.innerHTML =
       mustDone === mustCount
-        ? `<strong>All ${mustCount} must-haves checked off.</strong> ${esc(plan.answers.name || 'Your rookie')} is ready to play!`
-        : `<strong>${mustDone} of ${mustCount}</strong> must-haves checked off`;
+        ? `${svgIcon('star')} <strong>Opening Day ready!</strong> ${esc(plan.answers.name || 'Your rookie')} has every must-have. Play ball!`
+        : `<strong>${mustDone} of ${mustCount}</strong> must-haves checked off. Check them off as you buy.`;
+  root.querySelector('[data-meter]')?.classList.toggle('is-done', mustDone === mustCount);
+  return mustCount > 0 && mustDone === mustCount;
 }
 
 function renderResults(root: HTMLElement, plan: Plan, opts: { shared: boolean }) {
@@ -488,7 +521,7 @@ function renderResults(root: HTMLElement, plan: Plan, opts: { shared: boolean })
     const items = plan.items.filter((i) => (g.key === 'covered' ? i.covered : !i.covered && i.priority === g.key));
     if (!items.length) return '';
     return `<div class="group group-${g.key}">
-      <div class="group-head"><h3>${g.title} <span class="count">${items.length}</span></h3><p>${g.blurb}</p></div>
+      <div class="group-head"><p class="group-tag">${g.tag}</p><h3>${g.title} <span class="count">${items.length}</span></h3><p>${g.blurb}</p></div>
       ${items.map((i) => itemCard(i, plan, got)).join('')}
     </div>`;
   }).join('');
@@ -498,10 +531,11 @@ function renderResults(root: HTMLElement, plan: Plan, opts: { shared: boolean })
   root.innerHTML = `
   ${opts.shared ? `<div class="shared-banner no-print">${svgIcon('link')}<p>Someone shared this gear plan with you. <a href="/gear-guide/" data-act="restart">Build one for your own player →</a></p></div>` : ''}
   <header class="res-hero">
-    <p class="eyebrow">Your game plan is ready</p>
+    <p class="eyebrow">${svgIcon('baseball')} Safe at home! Your game plan is ready</p>
     <h1 tabindex="-1" data-res-title>${titleName} gear plan</h1>
     <ul class="chips">${plan.chips.map((c) => `<li>${esc(c)}</li>`).join('')}</ul>
     <div class="res-actions no-print">
+      <button type="button" class="btn btn-red" data-act="goto-card">${svgIcon('star')} Make a rookie card</button>
       <button type="button" class="btn btn-ghost" data-act="print">${svgIcon('print')} Print / save PDF</button>
       <button type="button" class="btn btn-ghost" data-act="share">${svgIcon('link')} Share with family</button>
       <button type="button" class="btn btn-ghost" data-act="edit">${svgIcon('edit')} Edit answers</button>
@@ -548,9 +582,11 @@ function renderResults(root: HTMLElement, plan: Plan, opts: { shared: boolean })
 
       <section class="card step-card" aria-labelledby="s5">
         <h2 id="s5"><span class="num">5</span> Pack the bag</h2>
-        <p>Run through this the night before. Kids love checking things off.</p>
-        <ul class="bag-list">${plan.bag.map((b, i) => `<li><label><input type="checkbox" id="bag-${i}"> <span>${esc(b)}</span></label></li>`).join('')}</ul>
+        <p>The night before, hand this one to ${esc(plan.who)}. <strong>Packing the bag is the player’s job</strong>, just like the big leaguers.</p>
+        <ul class="bag-list">${plan.bag.map((b, i) => `<li><label><input type="checkbox" id="bag-${i}"><span class="bag-icon">${svgIcon(b.icon)}</span><span>${esc(b.text)}</span></label></li>`).join('')}</ul>
       </section>
+
+      ${rookieCardSection(plan, 6)}
     </div>
 
     <aside class="res-side">
@@ -585,7 +621,39 @@ function renderResults(root: HTMLElement, plan: Plan, opts: { shared: boolean })
   </div>`;
 
   updateMeter(root, plan);
+  mountRookieCard(root, plan);
+}
 
+let timerHandle = 0;
+function startTimer(box: HTMLElement | null) {
+  if (!box) return;
+  const num = $('[data-timer-num]', box)!;
+  const text = $('[data-timer-text]', box)!;
+  const label = $('[data-timer-label]', box)!;
+  const original = text.dataset.original ?? text.textContent ?? '';
+  text.dataset.original = original;
+  clearInterval(timerHandle);
+  let left = 20;
+  box.classList.add('running');
+  box.classList.remove('done');
+  num.textContent = String(left);
+  label.textContent = 'Restart';
+  text.textContent = 'Arm straight out to the side… hold it… keep it level!';
+  track('Bat Timer Started', {});
+  timerHandle = window.setInterval(() => {
+    left -= 1;
+    num.textContent = String(left);
+    if (left === 10) text.textContent = 'Halfway there! Is the barrel still level?';
+    if (left === 3) text.textContent = 'Almost… 3… 2… 1…';
+    if (left <= 0) {
+      clearInterval(timerHandle);
+      box.classList.remove('running');
+      box.classList.add('done');
+      num.textContent = '✓';
+      text.textContent = 'Time! If the bat stayed level the whole time, it’s not too heavy. If it dipped, try one an ounce lighter.';
+      label.textContent = 'Try again';
+    }
+  }, 1000);
 }
 
 // ---------------------------------------------------------------------------
@@ -599,8 +667,8 @@ export function initWizard() {
   const preview = $('[data-preview]')!;
   const previewList = $('[data-preview-list]')!;
   const progressWrap = $('[data-progress-wrap]')!;
-  const progressBar = $('[data-progress]')!;
-  const progressRole = $('.wiz-progress')!;
+  const basepath = $('[data-basepath]')!;
+  const trivia = $('[data-trivia]')!;
   const count = $('[data-count]')!;
   const steps = $$<HTMLFieldSetElement>('.step', form);
   let current: StepId = 'intro';
@@ -615,7 +683,10 @@ export function initWizard() {
     else ids.delete(input.dataset.got);
     store(KEY_GOT, [...ids]);
     input.closest('.item')?.classList.toggle('is-got', input.checked);
-    updateMeter(results, currentPlan);
+    if (updateMeter(results, currentPlan) && input.checked) {
+      celebrate();
+      track('Opening Day Ready', {});
+    }
   });
   results.addEventListener('submit', (e) => {
     if ((e.target as HTMLElement).matches('[data-signup]')) track('Newsletter Signup', { stage: currentPlan?.stage ?? '' });
@@ -636,6 +707,9 @@ export function initWizard() {
     const box = $(`[data-react="${field}"]`, form);
     if (!box) return;
     const text = reaction(field, draft());
+    // Skip identical re-renders so nothing shifts (or re-animates) under the user's finger.
+    if (box.dataset.text === text) return;
+    box.dataset.text = text;
     box.innerHTML = text ? coachHtml(text) : '';
   };
 
@@ -661,9 +735,13 @@ export function initWizard() {
     const idx = STEPS.indexOf(step);
     const total = STEPS.length - 1;
     progressWrap.hidden = step === 'intro';
-    progressBar.style.width = `${Math.round((idx / total) * 100)}%`;
-    progressRole.setAttribute('aria-valuenow', String(Math.round((idx / total) * 100)));
-    count.textContent = `Question ${idx} of ${total}`;
+    const p = Math.max(0, idx - 1) / total;
+    basepath.style.setProperty('--p', String(p));
+    basepath.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+    $$('[data-base]', basepath).forEach((b) => b.classList.toggle('reached', p >= Number(b.dataset.base) / 4));
+    count.innerHTML = `<span>Question ${idx} of ${total}</span> <strong>${BASE_CALLS[Math.max(0, idx - 1)] ?? ''}</strong>`;
+    trivia.hidden = step === 'intro';
+    if (step !== 'intro') trivia.innerHTML = `<strong>Dugout trivia:</strong> ${esc(TRIVIA[(idx - 1) % TRIVIA.length])}`;
     personalize();
     renderPreview();
     if (push) history.pushState({ rr: step }, '', location.pathname);
@@ -677,10 +755,11 @@ export function initWizard() {
     if (step !== 'intro') track('Wizard Step', { step });
   };
 
-  const finish = ({ push = true } = {}) => {
+  const finish = ({ push = true, fresh = true } = {}) => {
     const answers = toAnswers(draft());
     store(KEY_DONE, true);
     showPlan(answers, { push, shared: false });
+    if (fresh) setTimeout(celebrate, 150);
     track('Plan Complete', {
       age: answers.age,
       team: answers.team,
@@ -741,8 +820,14 @@ export function initWizard() {
     if (t.closest('[data-next]')) next();
     else if (t.closest('[data-back]')) history.back();
   });
-  form.addEventListener('input', () => {
+  form.addEventListener('input', (e) => {
     personalize();
+    // Show the size reaction while they type, so it doesn't pop in (and move the
+    // Next button) when the weight field loses focus.
+    if ((e.target as HTMLInputElement).name === 'weight') {
+      renderReaction('size');
+      renderPreview();
+    }
   });
   form.addEventListener('change', (e) => {
     const name = (e.target as HTMLInputElement).name;
@@ -796,14 +881,22 @@ export function initWizard() {
       ['age', 'size', 'throws', 'bats', 'team', 'position', 'experience', 'budget'].forEach(renderReaction);
     } else if (act === 'restart') {
       e.preventDefault();
-      forget(KEY_DRAFT, KEY_DONE, KEY_GOT);
+      forget(KEY_DRAFT, KEY_DONE, KEY_GOT, KEY_CARD);
       form.reset();
       fillForm(form, { have: [], unsureSize: false });
-      $$<HTMLElement>('[data-react]', form).forEach((r) => (r.innerHTML = ''));
+      $$<HTMLElement>('[data-react]', form).forEach((r) => {
+        r.innerHTML = '';
+        r.dataset.text = '';
+      });
       $$<HTMLInputElement | HTMLSelectElement>('select, input[name="weight"]', form).forEach((el) => (el.disabled = false));
       $('[data-resume]', form)!.hidden = true;
       history.replaceState({ rr: 'intro' }, '', location.pathname);
       show('intro', { push: false });
+    } else if (act === 'goto-card') {
+      $('#rookie-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      $<HTMLInputElement>('#rc-number')?.focus({ preventScroll: true });
+    } else if (act === 'timer') {
+      startTimer(btn.closest<HTMLElement>('[data-timer]'));
     } else if (act === 'resume') {
       const d = draft();
       const firstOpen = STEPS.find((s) => s !== 'intro' && !validate(s, d)) ?? 'extras';
@@ -844,7 +937,7 @@ export function initWizard() {
     }
     ['age', 'size', 'throws', 'bats', 'team', 'position', 'experience', 'budget'].forEach(renderReaction);
     if (store<boolean>(KEY_DONE)) {
-      finish({ push: false });
+      finish({ push: false, fresh: false });
       return;
     }
     if (saved.age != null) $('[data-resume]', form)!.hidden = false;

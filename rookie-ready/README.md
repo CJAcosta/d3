@@ -9,6 +9,9 @@ budget, what they already own) and get a personalized plan:
 - Spec-matched shopping buttons (e.g. "youth baseball glove 10.75 inch right hand throw") for each retailer you're an affiliate of
 - A copy-and-send message for the coach, a budget estimate, a countdown to the first practice and a bag checklist
 - Print / save as PDF, and a share link for grandparents and family (the child's name is never put in the link)
+- Fun for the kid: run-the-bases progress, baseball confetti at the finish and when every must-have is checked off,
+  dugout trivia, a 20-second "bat hold" challenge timer, a picture bag checklist, and a **rookie trading card**
+  (photo, number, team color, B/T line, gear sizes) they can download or share. The photo is drawn in the browser and never uploaded.
 
 Plus nine SEO guides (bat and glove size charts, USA vs USSSA vs BBCOR, helmets, cleats, catcher's gear, tee ball, glove break-in, and the full first-season checklist).
 
@@ -72,6 +75,8 @@ Set `analytics.plausibleDomain` in `src/config/site.ts`. These custom events are
 | `Plan Complete` (`age`, `team`, `stage`, `budget`, `position`) | Plan generated |
 | `Affiliate Click` (`merchant`, `item`, `page`) | Any paid link |
 | `Plan Shared`, `Plan Printed`, `Coach Message Copied`, `Shared Plan Viewed` | Engagement |
+| `Rookie Card Downloaded` (`photo`, `number`), `Rookie Card Shared`, `Rookie Card Photo Added` | Rookie card |
+| `Bat Timer Started`, `Opening Day Ready` | Kid moments |
 | `CTA Click` (`id`) | Buttons into the wizard |
 | `Newsletter Signup` | Email form submitted |
 

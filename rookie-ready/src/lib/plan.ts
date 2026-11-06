@@ -79,7 +79,8 @@ export interface Plan {
   budget: { must: [number, number]; withRecommended: [number, number] };
   coachMessage: string;
   timeline: TimelineStep[];
-  bag: string[];
+  /** Night-before checklist; icons make it easy for kids to check off themselves. */
+  bag: { text: string; icon: string }[];
 }
 
 export const PRIORITY_LABEL: Record<Priority, string> = {
@@ -451,17 +452,17 @@ export function buildPlan(answers: Answers): Plan {
     },
   ];
 
-  const bag = [
-    'Glove',
-    ...(have.has('bat') || stage !== 'teeball' ? ['Bat'] : []),
-    'Batting helmet',
-    'Water bottle (full)',
-    'Cleats (or on their feet)',
-    ...(a.protection === 'cup' ? ['Cup + compression shorts (on before you leave)'] : []),
-    'Team hat',
-    ...(isCatcher ? ['Catcher’s gear + mitt'] : []),
-    'Sunscreen',
-    'A snack for after',
+  const bag: Plan['bag'] = [
+    { text: 'Glove', icon: 'glove' },
+    ...(have.has('bat') || stage !== 'teeball' ? [{ text: 'Bat', icon: 'bat' }] : []),
+    { text: 'Batting helmet', icon: 'helmet' },
+    { text: 'Water bottle (full)', icon: 'bottle' },
+    { text: 'Cleats (or on their feet)', icon: 'cleat' },
+    ...(a.protection === 'cup' ? [{ text: 'Cup + compression shorts (on before you leave)', icon: 'shield' }] : []),
+    { text: 'Team hat', icon: 'cap' },
+    ...(isCatcher ? [{ text: 'Catcher’s gear + mitt', icon: 'mask' }] : []),
+    { text: 'Sunscreen', icon: 'sun' },
+    { text: 'A snack for after', icon: 'apple' },
   ];
 
   return {
