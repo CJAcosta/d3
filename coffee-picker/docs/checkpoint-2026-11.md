@@ -1,8 +1,9 @@
 # Checkpoint 1: November 2026
 
 A snapshot of the coffee-picker project after its first simulation phase.
-Git tag: `coffee-picker-checkpoint-1`. What comes next is in
-[`roadmap.md`](roadmap.md).
+The code and results are those of commit `fb9fa54` on branch
+`ccr-74321688-r6rcfo`; this document and the roadmap were added right after.
+What comes next is in [`roadmap.md`](roadmap.md).
 
 ## Where the project stands
 
