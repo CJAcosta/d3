@@ -5,6 +5,9 @@ fast enough to matter, on steep mountain farms. It was started with PROCAFE.
 It lives in this repository for now and can move to its own repository with
 its history.
 
+**Start here:** [where the project stands](docs/checkpoint-2026-11.md)
+(checkpoint 1, November 2026) and [what comes next](docs/roadmap.md).
+
 ## The question this milestone answers
 
 Picking one fruit at a time is slow. A selective picker in Colombia takes
@@ -362,6 +365,8 @@ MUJOCO_GL=osmesa python scripts/field_demo.py    # whole robot: walk, pick, walk
 | `coffeesim/walker.py` | Six-legged crab walking the contour: gaits, postures, leg IK |
 | `coffeesim/field.py` | The whole robot on a slope: legs, both arms, cameras, basket on one body |
 | `scripts/pr_slopes.py` | Slope distribution of the coffee belt from USGS elevation data |
+| `docs/checkpoint-2026-11.md` | Checkpoint 1: what is established, what is assumed |
+| `docs/roadmap.md` | Stages, gates, people and costs from here to a field robot |
 | `docs/field-protocol.md` | What PROCAFE can measure to replace the assumptions |
 | `docs/platform-crab.md` | The crab body plan on Puerto Rico slopes |
 
